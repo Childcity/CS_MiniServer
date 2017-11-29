@@ -15,7 +15,11 @@ CTcpListener::~CTcpListener()
 //Send a massage to the specified client
 void CTcpListener::Send(int clientSocket, std::string msg)
 {
-	send((SOCKET)clientSocket, msg.c_str(), (int)msg.size() + 1, 0);
+	int res = send((SOCKET)clientSocket, msg.c_str(), (int)msg.size()+1, 0);
+	if( res == SOCKET_ERROR )
+	{
+		std::cout <<"send failed with error: " << WSAGetLastError() <<std::endl;
+	}
 }
 
 // Initialize winsock
@@ -84,9 +88,10 @@ void CTcpListener::Run()
 				if( bytesIn <= 0 )
 				{
 					// Drop the client
+					std::cout << "SOCKET #" << sock << ": go away..." << "\r\n";
 					closesocket(sock);
 					FD_CLR(sock, &master);
-				} else
+				} else 
 				{
 					// Check to see if it's a command. \quit kills the server
 					if( buf[0] == '\\' )
@@ -102,7 +107,6 @@ void CTcpListener::Run()
 							// TODO: Place for other commands for server
 						}
 
-
 						  // Unknown command
 						continue;
 					}
@@ -111,9 +115,9 @@ void CTcpListener::Run()
 					{
 						if( MessageReceived != NULL )
 						{
-							//std::thread t( MessageReceived, this, sock, std::string(buf, 0, bytesIn) );
-							MessageReceived( this, sock, std::string(buf, 0, bytesIn));
-							//t.detach(); //Make thread separate from server
+							std::thread t( MessageReceived, this, sock, std::string(buf, 0, bytesIn) );
+							//MessageReceived( this, sock, std::string(buf, 0, bytesIn));
+							t.detach(); //Make thread separate from server
 						}
 					}
 
@@ -221,7 +225,7 @@ SOCKET CTcpListener::CreateSocket()
 // Wait for a connection
 SOCKET CTcpListener::WaitForConnection(SOCKET listening)
 {
-	SOCKET client = accept(listening, NULL, NULL);
+	SOCKET client = accept(listening,  nullptr, nullptr);
 	return client;
 }
 

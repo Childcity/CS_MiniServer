@@ -17,7 +17,9 @@ void main( int arc, char **argv )
 		return;
 	}
 
-	CTcpListener server(argv[1], stoi( argv[2]), Listener_MessageReceived);
+	cout<<"iPAdress: " << argv[1] <<':' << argv[2] <<endl;
+
+	CTcpListener server(argv[1], stoi(argv[2]), Listener_MessageReceived);
 
 	if( server.Init() )
 	{
@@ -39,7 +41,7 @@ void Listener_MessageReceived(CTcpListener *listener, int client, string msg)
 		std::ostringstream ss;
 		ss << "SOCKET #" << client << ": " << msg << "\r\n";
 		string strOut = ss.str();
-		listener->Send(client, msg);
+		listener->Send(client, strOut);
 	} catch( ... )
 	{
 		listener->InformExeption(current_exception());
