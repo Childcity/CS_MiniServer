@@ -26,7 +26,7 @@ void CTcpListener::Send(int clientSocket, std::string msg)
 bool CTcpListener::Init()
 {
 	WSAData data;
-	WORD ver = MAKEWORD(1, 0);
+	WORD ver = MAKEWORD(2, 0);
 
 	int wsInit = WSAStartup(ver, &data);
 	// TODO: Inform caller the error that occured
@@ -215,6 +215,7 @@ SOCKET CTcpListener::CreateSocket()
 			}
 		} else
 		{
+			//Port can't be use!
 			return -1;
 		}
 	}

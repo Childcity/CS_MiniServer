@@ -2,27 +2,40 @@
 #include<string>
 #include<thread>
 
+#include"GetIp.hpp"
 #include "TcpListener.hpp"
 
 using namespace std;
 
 void Listener_MessageReceived(CTcpListener *listener, int client, string msg);
 
-//127.0.0.1 5301
 void main( int arc, char **argv )
 {
 	if( arc != 3 )
 	{
-		cout <<"Usage:" <<"csserver.exe [ipAdress] [port]" <<endl;
+		cout <<"Usage:" <<"csserver.exe [ipAdress] [port]" <<endl <<endl;
+		//return;
+
+		// I do not know if this is necessary, but I think that in the phase of development it will not be unnecessary
+		IpAddresses ips; // Declare structure, that consists of list of Ipv4 and Ipv6 ip addresses
+		GetIpAddresses(ips); // Get list of ipv4 and ipv6 from possible interfaces
+
+		cout <<"Possible ip addresses on this machine:" <<endl;
+
+		int i = 1;
+		cout << i++ << ". 127.0.0.1" << endl;
+		for( auto var : ips.mIpv4 )
+			cout <<i++ << ". " << var << endl;
+
+		cin.get();
 		return;
 	}
-
-	cout<<"iPAdress: " << argv[1] <<':' << argv[2] <<endl;
 
 	CTcpListener server(argv[1], stoi(argv[2]), Listener_MessageReceived);
 
 	if( server.Init() )
 	{
+		cout << "Server is working on: " << arc << argv[1] << ':' << argv[2] << endl;
 		server.Run();
 	}
 
