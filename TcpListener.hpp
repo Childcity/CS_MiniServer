@@ -3,7 +3,8 @@
 #include <sstream>
 #include <iostream>
 #include <string>
-#include "thread"
+#include <thread>
+#include <vector>
 #include <mutex>
 
 #include <WS2tcpip.h> // For Winsock

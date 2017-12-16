@@ -5,6 +5,8 @@
 #include"GetIp.hpp"
 #include "TcpListener.hpp"
 
+#include "glog\logging.h"
+
 using namespace std;
 
 void Listener_MessageReceived(CTcpListener *listener, int client, string msg);
@@ -31,11 +33,15 @@ void main( int arc, char **argv )
 		return;
 	}
 
+	fLS::FLAGS_log_dir = "logs\\";
+	google::InitGoogleLogging(argv[0]);
+	LOG(WARNING) << "Test " << 123;
+
 	CTcpListener server(argv[1], stoi(argv[2]), Listener_MessageReceived);
 
 	if( server.Init() )
 	{
-		cout << "Server is working on: " << arc << argv[1] << ':' << argv[2] << endl;
+		LOG(WARNING) << "Server is working on: " << argv[1] << ':' << argv[2] << endl;
 		server.Run();
 	}
 
