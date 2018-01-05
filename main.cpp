@@ -1,15 +1,16 @@
-#include<iostream>
-#include<string>
-#include<thread>
+#pragma once
+//#define BOOST_ASIO_ENABLE_HANDLER_TRACKING // for asio debuging
+//#define GOOGLE_STRIP_LOG 0 // cut all glog strings from .exe
+#include <iostream>
+#include <string>
 
-#include"GetIp.hpp"
-#include "TcpListener.hpp"
+#include "GetIp.h"
+#include "CServer.hpp"
 
 #include "glog\logging.h"
+#include <boost/asio.hpp> 
 
 using namespace std;
-
-void Listener_MessageReceived(CTcpListener *listener, int client, string msg);
 
 void main( int arc, char **argv )
 {
@@ -33,37 +34,19 @@ void main( int arc, char **argv )
 		return;
 	}
 
-	fLS::FLAGS_log_dir = "logs\\";
+	system("chcp 65001>nul");
+
+	//Init Glog
+	//fLS::FLAGS_log_dir = "logs\\";
 	google::InitGoogleLogging(argv[0]);
-	LOG(WARNING) << "Test " << 123;
 
-	CTcpListener server(argv[1], stoi(argv[2]), Listener_MessageReceived);
-
-	if( server.Init() )
-	{
-		LOG(WARNING) << "Server is working on: " << argv[1] << ':' << argv[2] << endl;
-		server.Run();
-	}
-
-}
-
-void Listener_MessageReceived(CTcpListener *listener, int client, string msg)
-{ 
 	try
 	{
-		cout << "SOCKET #" << client << ": " << msg << "\r\n";
+		boost::asio::io_context io_context;
+		CServer server(io_context, std::atoi(argv[1]), std::atoi(argv[2]));
 
-		// TODO: Do some work with DB
-
-
-		//Send answer to client
-		std::ostringstream ss;
-		ss << "SOCKET #" << client << ": " << msg << "\r\n";
-		string strOut = ss.str();
-		listener->Send(client, strOut);
-	} catch( ... )
+	} catch(exception& e)
 	{
-		listener->InformExeption(current_exception());
+		LOG(FATAL) << "Server has been crashed: " << e.what() << std::endl;
 	}
-	
 }
