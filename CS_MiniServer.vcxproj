@@ -141,11 +141,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CClientSession.cpp" />
+    <ClCompile Include="CRunAsync.cpp" />
     <ClCompile Include="CServer.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CClientSession.hpp" />
+    <ClInclude Include="CRunAsync.hpp" />
     <ClInclude Include="CServer.hpp" />
     <ClInclude Include="GetIp.h" />
   </ItemGroup>

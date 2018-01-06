@@ -7,9 +7,16 @@
 #include <vector>
 
 #include "glog\logging.h"
+#include "CRunAsync.hpp"
 
 using namespace boost::asio;
 using namespace boost::posix_time;
+
+template <typename T, std::size_t N>
+constexpr std::size_t countof(T const (&)[N]) noexcept
+{
+	return N;
+}
 
 class CClientSession;
 typedef boost::shared_ptr<CClientSession> client_ptr;
@@ -28,6 +35,8 @@ private:
 		, started_(false)
 		, timer_(io_context)
 		, clients_changed_(false)
+		, username_("user")
+		, io_context_(io_context)
 	{}
 
 public:
@@ -118,26 +127,59 @@ private:
 		if( !started() )
 			return;
 
+		static const char login[] = "login ";
+		static const char fibo[] = "fibo ";
+		static const char ping[] = "ping";
+		static const char who[] = "who";
+		static const size_t login_size = countof(login);
+		static const size_t fibo_size = countof(fibo);
+		static const size_t ping_size = countof(ping);
+		static const size_t who_size = countof(who);
+
 		// process the msg
 		boost::recursive_mutex::scoped_lock lk(cs_);
 		std::string msg(read_buffer_, bytes);
 
-		VLOG(1)<< "DEBUG: received msg: '" << msg <<'\'' << std::endl;
+		VLOG(1) << "DEBUG: received msg: '" << msg << '\'' << std::endl;
 
-		if( msg.find("login ") == 0 ) 
+		if( bytes > login_size && memcmp(read_buffer_, login, login_size - 1) == 0 )
+		{
+			on_login(std::move(msg));
+		}
+		else if( bytes == ping_size && memcmp(read_buffer_, ping, ping_size - 1) == 0 )
+		{
+			on_ping();
+		} 
+		else if( bytes == who_size && memcmp(read_buffer_, who, who_size - 1) == 0 )
+		{
+			on_clients();
+		}
+		else if( bytes > fibo_size && memcmp(read_buffer_, fibo, fibo_size - 1) == 0 )
+		{
+			on_fibo(std::move(msg));
+		}
+		else
+		{
+			do_write("command undefined\n");
+			LOG(INFO) << "Invalid msg from client: " << username() << " - " << msg;
+		}
+
+		/*if( msg.find("login ") == 0 ) 
 			on_login(msg);
 		else if( msg.find("ping") == 0 ) 
 			on_ping();
 		else if( msg.find("who") == 0 ) 
 			on_clients();
+		else if( msg.find("fibo ") == 0 )
+			do_fibo(msg);
 		else 
 		{
-			do_write("command ubdefined\n");
-			LOG(INFO) << "Invalid msg from client: " << msg << username() << std::endl;
-		}
+			do_write("command undefined\n");
+			LOG(INFO) << "Invalid msg from client: " << username()<<" - " << msg;
+		}*/
 	}
 
-	void on_login(const std::string& msg)
+	void on_login(const std::string msg)
 	{
 		boost::recursive_mutex::scoped_lock lk(cs_);
 		std::istringstream in(msg);
@@ -209,8 +251,52 @@ private:
 		timer_.async_wait( boost::bind(&CClientSession::on_check_ping, shared_from_this()) );
 	}
 
-	void on_write(const error_code & err, size_t bytes)
+	void on_write(const error_code& err, size_t bytes)
 	{
+		do_read();
+	}
+
+	error_code do_get_fibo(size_t n)
+	{
+		//return n<=2 ? n: get_fibo(n-1) + get_fibo(n-2);
+		size_t a = 1, b = 1;
+		for( int i = 3; i <= n; i++ )
+		{
+			size_t c = a + b;
+			a = b; b = c;
+		}
+		
+		boost::recursive_mutex::scoped_lock cs_;
+		res.push_back(std::make_pair(n,b));
+
+		return boost::system::error_code(0, boost::system::generic_category());
+	}
+
+	void on_get_fibo(const size_t n, error_code& err)
+	{
+		if( err )
+			return;
+
+		boost::recursive_mutex::scoped_lock cs_;
+		for(auto it : res)
+			if(it.first == n)
+			{
+				VLOG(1) << "DEBUG: fibo for: " << n << " = " << it.second << std::endl;
+				return;
+			}
+
+		//do_write("RESULT\n");
+	}
+
+	void on_fibo(const std::string msg)
+	{
+		std::istringstream in(msg);
+		in.ignore(5);
+		short n; in >> n;
+		CRunAsync::new_()->add(boost::bind(&CClientSession::do_get_fibo, shared_from_this(), n)
+							  , boost::bind(&CClientSession::on_get_fibo, shared_from_this(), n, _1)
+							  , io_context_);
+
 		do_read();
 	}
 
@@ -247,15 +333,20 @@ private:
 		return found ? 0 : 1;
 	}
 
+
 	mutable boost::recursive_mutex cs_;
-	bool started_;
-	ip::tcp::socket sock_;
 	enum{ max_msg = 1024, max_timeout = 10000 };
 	char read_buffer_[max_msg];
 	char write_buffer_[max_msg];
-	std::string username_;
-	deadline_timer timer_;
+	io_context& io_context_;
+	ip::tcp::socket sock_;
+	bool started_;
+
 	boost::posix_time::ptime last_ping_;
+	deadline_timer timer_;
+
+	std::vector<std::pair<size_t,size_t>> res;
+	std::string username_;
 	bool clients_changed_;
 };
 
