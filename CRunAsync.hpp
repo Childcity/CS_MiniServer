@@ -1,4 +1,6 @@
 #pragma once
+#define _WIN32_WINNT 0x0501
+
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
 #include <boost/asio.hpp>
@@ -19,9 +21,7 @@ private:
 	typedef boost::function<void(boost::system::error_code)> completion_func;
 	typedef boost::function<boost::system::error_code()> op_func;
 
-	CRunAsync()
-		: started_(false) 
-		{}
+	CRunAsync(): started_(false){}
 
 	struct operation{
 		operation(io_service& service, op_func op, completion_func completion)
@@ -30,7 +30,7 @@ private:
 		{}
 
 		operation()
-			: service(0) 
+			: service(0)
 		{}
 
 		typedef boost::shared_ptr<io_service::work> work_ptr;
@@ -40,63 +40,14 @@ private:
 		op_func op;
 	};
 
-	void start()
-	{
-		{
-			boost::recursive_mutex::scoped_lock lk(cs_);
-			if( started_ )
-				return;
-			started_ = true;
-		}
-		boost::thread t(boost::bind(&CRunAsync::run, this));
-	}
+	void start();
 
-	void run()
-	{
-		while( true )
-		{
-			{
-				boost::recursive_mutex::scoped_lock lk(cs_);
-				if( !started_ ) 
-					break;
-			}
-			boost::this_thread::sleep(boost::posix_time::millisec(10));
-			operation cur;
-			{
-				boost::recursive_mutex::scoped_lock lk(cs_);
-				if( !ops_.empty() )
-				{
-					cur = ops_[0];
-					ops_.erase(ops_.begin());
-				}
-			}
-			if( cur.service )
-			{
-				boost::system::error_code err = cur.op();
-				cur.service->post(boost::bind(cur.completion, err));
-			}
-		}
-		self_.reset();
-	}
+	void run();
 
 public:
-	void add(op_func op, completion_func completion, io_service& service)
-	{
-		// so that we're not destroyed while async-executing something
-		self_ = shared_from_this();
-		boost::recursive_mutex::scoped_lock lk(cs_);
-		ops_.push_back(operation(service, op, completion));
+	void add(op_func op, completion_func completion, io_service& service);
 
-		if( !started_ ) 
-			start();
-	}
-
-	void stop()
-	{
-		boost::recursive_mutex::scoped_lock lk(cs_);
-		started_ = false;
-		ops_.clear();
-	}
+	void stop();
 
 private:
 	boost::recursive_mutex cs_;

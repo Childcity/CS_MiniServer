@@ -12,28 +12,8 @@
 
 using namespace std;
 
-void main( int arc, char **argv )
+void main( int argc, char **argv )
 {
-	if( arc != 3 )
-	{
-		cout <<"Usage:" <<"csserver.exe [ipAdress] [port]" <<endl <<endl;
-		//return;
-
-		// I do not know if this is necessary, but I think that in the phase of development it will not be unnecessary
-		IpAddresses ips; // Declare structure, that consists of list of Ipv4 and Ipv6 ip addresses
-		GetIpAddresses(ips); // Get list of ipv4 and ipv6 from possible interfaces
-
-		cout <<"Possible ip addresses on this machine:" <<endl;
-
-		int i = 1;
-		cout << i++ << ". 127.0.0.1" << endl;
-		for( auto var : ips.mIpv4 )
-			cout <<i++ << ". " << var << endl;
-
-		cin.get();
-		return;
-	}
-
 	system("chcp 65001>nul");
 
 	//Init Glog
@@ -43,7 +23,29 @@ void main( int arc, char **argv )
 	try
 	{
 		boost::asio::io_context io_context;
-		CServer server(io_context, std::atoi(argv[1]), std::atoi(argv[2]));
+
+		if( argc == 3 )
+			CServer Server(io_context, std::atoi(argv[1]), std::atoi(argv[2]));
+		else if( argc == 4 )
+			CServer Server(io_context, argv[1], std::atoi(argv[2]), std::atoi(argv[3]));
+		else
+		{
+			cout << "Usage:" <<argv[0] <<" [ipAddress] [port] [threds_number]" << endl << endl;
+			//return;
+
+			// I do not know if this is necessary, but I think that in the phase of development it will not be unnecessary
+			IpAddresses ips; // Declare structure, that consists of list of Ipv4 and Ipv6 ip addresses
+			GetIpAddresses(ips); // Get list of ipv4 and ipv6 from possible interfaces
+
+			cout << "Possible ipV4 addresses on this machine:" << endl;
+
+			int i = 1;
+			cout << i++ << ". 127.0.0.1" << endl;
+			for( auto var : ips.mIpv4 )
+				cout << i++ << ". " << var << endl;
+
+			cin.get();
+		}
 
 	} catch(exception& e)
 	{
