@@ -1,8 +1,10 @@
-#include "CServer.hpp"
+#include "CServer.h"
 
 
 void CServer::Start()
 {
+	LOG(INFO) << "Server started at: " << acceptor_.local_endpoint() << std::endl;
+
 	// init first client
 	VLOG(1) << "DEBUG: init first client" << std::endl;
 	CClientSession::ptr client = CClientSession::new_(io_context);
@@ -18,12 +20,13 @@ void CServer::Start()
 	threads.join_all();
 }
 
-void CServer::do_accept(CClientSession::ptr client, const boost::system::error_code& err)
+void CServer::do_accept(CClientSession::ptr client, const boost::system::error_code & err)
 {
-	CHECK( err ) <<"Accepting client faild. Closing server...";
+	CHECK(!err) << "\nAccepting client faild with error: " << err << " . Closing server...";
 
 	client->start();
 	CClientSession::ptr new_client = CClientSession::new_(io_context);
+
 	VLOG(1) << "DEBUG: accept NEXT client";
 	acceptor_.async_accept(new_client->sock(), boost::bind(&CServer::do_accept, this, new_client, _1));
 }
@@ -35,8 +38,9 @@ void CServer::start_listen()
 	{
 		threads.create_thread(
 			[this]()
-		{
-			this->io_context.run();
-		});
+			{
+				this->io_context.run();
+			}
+		);
 	}
-}	
+}

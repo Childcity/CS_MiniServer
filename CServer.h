@@ -5,25 +5,28 @@
 #include <boost/asio.hpp> 
 #include <boost/thread.hpp>
 
-#include "CClientSession.hpp"
+#include "CClientSession.h"
 
 using namespace boost::asio;
 using boost::asio::ip::tcp;
 
 class CServer{
 public:
-	CServer(io_context& io_context, short port, short thread_num)
+	explicit CServer(io_context& io_context, short port, short thread_num)
 		: acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
 		, io_context(io_context)
 		, thread_num_(thread_num)
 	{ Start(); }
 
-	CServer(io_context& io_context, std::string ipAddress, short port, short thread_num)
+	explicit CServer(io_context& io_context, std::string ipAddress, short port, short thread_num)
 		: acceptor_(io_context, tcp::endpoint(ip::address::from_string(std::move(ipAddress)), port))
 		, io_context(io_context)
 		, thread_num_(thread_num)
 	{ Start(); }
 	
+	CServer(CServer const&) = delete;
+	CServer operator=(CServer const&) = delete;
+
 private:
 	void Start();
 

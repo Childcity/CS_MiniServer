@@ -4,15 +4,17 @@
 #include <iostream>
 #include <string>
 
-#include "GetIp.h"
-#include "CServer.hpp"
+#include "GetIp.hpp"
+#include "CServer.h"
 
 #include "glog\logging.h"
-#include <boost/asio.hpp> 
+#include <boost\asio.hpp> 
 
 using namespace std;
 
-void main( int argc, char **argv )
+void ShowUsage(const char *argv0);
+
+void main(int argc, char **argv)
 {
 	system("chcp 65001>nul");
 
@@ -22,33 +24,37 @@ void main( int argc, char **argv )
 
 	try
 	{
-		boost::asio::io_context io_context;
+		boost::asio::io_context io_context ;
 
 		if( argc == 3 )
 			CServer Server(io_context, std::atoi(argv[1]), std::atoi(argv[2]));
 		else if( argc == 4 )
-			CServer Server(io_context, argv[1], std::atoi(argv[2]), std::atoi(argv[3]));
+			CServer Server(io_context, argv[1], std::atoi(argv[2]), std::atoi(argv[3])); 
 		else
-		{
-			cout << "Usage:" <<argv[0] <<" [ipAddress] [port] [threds_number]" << endl << endl;
-			//return;
-
-			// I do not know if this is necessary, but I think that in the phase of development it will not be unnecessary
-			IpAddresses ips; // Declare structure, that consists of list of Ipv4 and Ipv6 ip addresses
-			GetIpAddresses(ips); // Get list of ipv4 and ipv6 from possible interfaces
-
-			cout << "Possible ipV4 addresses on this machine:" << endl;
-
-			int i = 1;
-			cout << i++ << ". 127.0.0.1" << endl;
-			for( auto var : ips.mIpv4 )
-				cout << i++ << ". " << var << endl;
-
-			cin.get();
-		}
+			ShowUsage(argv[0]);
 
 	} catch(exception& e)
 	{
 		LOG(FATAL) << "Server has been crashed: " << e.what() << std::endl;
 	}
+}
+
+void ShowUsage( const char * argv0 )
+{
+	cout << "Usage:" << argv0 << " [ipAddress] [port] [threds_number]" << endl << endl;
+	//return;
+
+	// I do not know if this is necessary, but I think that in the phase of development it will not be unnecessary
+	IpAddresses ips; // Declare structure, that consists of list of Ipv4 and Ipv6 ip addresses
+	GetIpAddresses(ips); // Get list of ipv4 and ipv6 from possible interfaces
+
+	cout << "Possible ipV4 addresses on this machine:" << endl;
+
+	int i = 1;
+	cout << i++ << ". 127.0.0.1" << endl;
+	for( auto var : ips.mIpv4 )
+		cout << i++ << ". " << var << endl;
+
+	cout << "\nPress ENTER to exit..." <<endl;
+	cin.get();
 }

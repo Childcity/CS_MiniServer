@@ -1,10 +1,17 @@
-#include "CClientSession.hpp"
+#include "CClientSession.h"
 
 class CClientSession;
 boost::recursive_mutex clients_cs;
 typedef boost::shared_ptr<CClientSession> client_ptr;
 typedef std::vector<client_ptr> cli_ptr_vector;
 cli_ptr_vector clients;
+
+// to define the length of array before comilation
+template <typename T, std::size_t N>
+constexpr std::size_t countof(T const (&)[N]) noexcept
+{
+	return N;
+}
 
 void CClientSession::start()
 {
@@ -84,37 +91,46 @@ void CClientSession::on_read(const error_code & err, size_t bytes)
 	if( !started() )
 		return;
 
-	static const char login[] = "login ";
-	static const char fibo[] = "fibo ";
-	static const char ping[] = "ping";
-	static const char who[] = "who";
-	static const size_t login_size = countof(login);
-	static const size_t fibo_size = countof(fibo);
-	static const size_t ping_size = countof(ping);
-	static const size_t who_size = countof(who);
+	// the static variable will be one for ALL INSTANCES OF THE CLASS that are created
+	static constexpr const char login[] = "login ";
+	static constexpr const char fibo[] = "fibo ";
+	static constexpr const char ping[] = "ping";
+	static constexpr const char who[] = "who";
+	static constexpr const size_t login_size = countof(login);
+	static constexpr const size_t fibo_size = countof(fibo);
+	static constexpr const size_t ping_size = countof(ping);
+	static constexpr const size_t who_size = countof(who);
 
 	// process the msg
-	boost::recursive_mutex::scoped_lock lk(cs_);
-	std::string msg(read_buffer_, bytes);
 
-	VLOG(1) << "DEBUG: received msg: '" << msg << '\'' << std::endl;
-
-	if( bytes > login_size && memcmp(read_buffer_, login, login_size - 1) == 0 )
+	// we must make copy of read_buffer_, for quick unlock sc_ mutex
+	boost::scoped_array<char> tmp_read_buffer_{new char[bytes + 1]};
 	{
+		boost::recursive_mutex::scoped_lock lk(cs_);
+		memcpy(tmp_read_buffer_.get(), read_buffer_, bytes);
+		tmp_read_buffer_[bytes] = 0;
+	}
+
+	VLOG(1) << "DEBUG: received msg: '" << tmp_read_buffer_.get() << '\''<<bytes<<' ' << memcmp(tmp_read_buffer_.get(), who, who_size - 1) << std::endl;
+
+	if( bytes > login_size && memcmp(tmp_read_buffer_.get(), login, login_size - 1) == 0 )
+	{
+		std::string const msg(tmp_read_buffer_.get(), bytes);
 		on_login(std::move(msg));
-	} else if( bytes == ping_size && memcmp(read_buffer_, ping, ping_size - 1) == 0 )
+	} else if( bytes == ping_size && memcmp(tmp_read_buffer_.get(), ping, ping_size - 1) == 0 )
 	{
 		on_ping();
-	} else if( bytes == who_size && memcmp(read_buffer_, who, who_size - 1) == 0 )
+	} else if( bytes == who_size && memcmp(tmp_read_buffer_.get(), who, who_size - 1) == 0 )
 	{
 		on_clients();
-	} else if( bytes > fibo_size && memcmp(read_buffer_, fibo, fibo_size - 1) == 0 )
+	}  else if( bytes > fibo_size && memcmp(tmp_read_buffer_.get(), fibo, fibo_size - 1) == 0 )
 	{
+		std::string const msg(tmp_read_buffer_.get(), bytes);
 		on_fibo(std::move(msg));
 	} else
 	{
-		do_write("command undefined\n");
-		LOG(INFO) << "Invalid msg from client: " << username() << " - " << msg;
+		do_write(std::move(std::string("command undefined\n")));
+		LOG(INFO) << "Invalid msg from client " << username() << ": '" << tmp_read_buffer_.get() << '\'' <<std::endl;
 	}
 
 	/*if( msg.find("login ") == 0 )
@@ -132,23 +148,23 @@ void CClientSession::on_read(const error_code & err, size_t bytes)
 	}*/
 }
 
-void CClientSession::on_login(const std::string msg)
+void CClientSession::on_login(const std::string & msg)
 {
 	boost::recursive_mutex::scoped_lock lk(cs_);
 	std::istringstream in(msg);
 
 	in >> username_ >> username_;
 
-	VLOG(1) << "debug: logged in: " << username_ << std::endl;
+	VLOG(1) << "DEBUG: logged in: " << username_ << std::endl;
 
-	do_write("login ok\n");
+	do_write(std::move(std::string("login ok\n")));
 	update_clients_changed();
 }
 
 void CClientSession::on_ping()
 {
 	boost::recursive_mutex::scoped_lock lk(cs_);
-	do_write(clients_changed_ ? "ping client_list_changed\n" : "ping OK\n");
+	do_write(clients_changed_ ? std::move(std::string("ping client_list_changed\n")) : std::move(std::string("ping OK\n")));
 
 	// we have notified client, that clients list was changed yet,
 	// so clients_changed_ should be false 
@@ -157,22 +173,21 @@ void CClientSession::on_ping()
 
 void CClientSession::on_clients()
 {
-	cli_ptr_vector copy;
-
+	cli_ptr_vector clients_copy;
 	{
 		boost::recursive_mutex::scoped_lock lk(clients_cs);
-		copy = clients;
+		clients_copy = clients;
 	}
 
 	std::string msg;
 
-	for( auto it : clients )
+	for( auto it : clients_copy )
 		msg += it->username() + " ";
 
 	//for( cli_ptr_vector::const_iterator b = copy.begin(), e = copy.end(); b != e; ++b )
 	//	msg += (*b)->username() + " ";
 
-	do_write("clients: " + msg + "\n");
+	do_write(std::move(std::string("clients: " + msg + "\n")));
 }
 
 //void do_ping()
@@ -204,7 +219,7 @@ void CClientSession::post_check_ping()
 	timer_.async_wait(boost::bind(&CClientSession::on_check_ping, shared_from_this()));
 }
 
-void CClientSession::on_write(const error_code& err, size_t bytes)
+void CClientSession::on_write(const error_code & err, size_t bytes)
 {
 	do_read();
 }
@@ -222,12 +237,15 @@ CClientSession::error_code CClientSession::do_get_fibo(size_t n)
 	boost::recursive_mutex::scoped_lock cs_;
 	res.push_back(std::make_pair(n, b));
 
-	return boost::system::error_code(0, boost::system::generic_category());
+	 return boost::system::error_code(0, boost::system::generic_category());
 }
 
-void CClientSession::on_get_fibo(const size_t n, error_code& err)
+void CClientSession::on_get_fibo(const size_t n, error_code & err)
 {
 	if( err )
+		return;
+
+	if( !started() )
 		return;
 
 	boost::recursive_mutex::scoped_lock cs_;
@@ -241,7 +259,7 @@ void CClientSession::on_get_fibo(const size_t n, error_code& err)
 	//do_write("RESULT\n");
 }
 
-void CClientSession::on_fibo(const std::string msg)
+void CClientSession::on_fibo(const std::string & msg)
 {
 	std::istringstream in(msg);
 	in.ignore(5);
@@ -264,7 +282,7 @@ void CClientSession::do_read()
 	//post_check_ping();
 }
 
-void CClientSession::do_write(const std::string& msg)
+void CClientSession::do_write(const std::string & msg)
 {
 	if( !started() )
 		return;
@@ -276,12 +294,15 @@ void CClientSession::do_write(const std::string& msg)
 	);
 }
 
-size_t CClientSession::read_complete(const error_code& err, size_t bytes)
+size_t CClientSession::read_complete(const error_code & err, size_t bytes)
 {
 	if( err )
 		return 0;
 
-	bool found = std::find(read_buffer_, read_buffer_ + bytes, '\n') < read_buffer_ + bytes;
+	bool found = strstr(read_buffer_, "\n") == read_buffer_ + bytes-1;
+	//bool found = strstr(read_buffer_, "!e\n") == read_buffer_ + bytes - 3;
+	//bool found = std::find(read_buffer_, read_buffer_ + bytes, '\n') < read_buffer_ + bytes;
+
 	// we read one-by-one until we get to enter, no buffering
 	return found ? 0 : 1;
 }
@@ -289,13 +310,13 @@ size_t CClientSession::read_complete(const error_code& err, size_t bytes)
 
 void update_clients_changed()
 {
-	cli_ptr_vector copy;
+	cli_ptr_vector clients_copy;
 	{
 		boost::recursive_mutex::scoped_lock lk(clients_cs);
-		copy = clients;
+		clients_copy = clients;
 	}
 
-	for( auto it : clients )
+	for( auto it : clients_copy )
 		it->set_clients_changed();
 
 	//old variant

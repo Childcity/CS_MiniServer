@@ -146,10 +146,10 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CClientSession.hpp" />
-    <ClInclude Include="CRunAsync.hpp" />
-    <ClInclude Include="CServer.hpp" />
-    <ClInclude Include="GetIp.h" />
+    <ClInclude Include="CClientSession.h" />
+    <ClInclude Include="CRunAsync.h" />
+    <ClInclude Include="CServer.h" />
+    <ClInclude Include="GetIp.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -5,28 +5,24 @@
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/scoped_array.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <vector>
 
 #include "glog\logging.h"
-#include "CRunAsync.hpp"
+#include "CRunAsync.h"
 
 using namespace boost::asio;
 using namespace boost::posix_time;
 
-// to define the length of array before comilation
-template <typename T, std::size_t N>
-constexpr std::size_t countof(T const (&)[N]) noexcept
-{
-	return N;
-}
-
 void update_clients_changed();
 
 class CClientSession : public boost::enable_shared_from_this<CClientSession>
-		, boost::noncopyable{
+							, boost::noncopyable{
 private:
-	CClientSession(io_context& io_context)
+	typedef boost::system::error_code error_code;
+
+	CClientSession(io_context & io_context)
 		: sock_(io_context)
 		, started_(false)
 		, timer_(io_context)
@@ -36,7 +32,7 @@ private:
 	{}
 
 public:
-	typedef boost::system::error_code error_code;
+
 	typedef boost::shared_ptr<CClientSession> ptr;
 
 	// init and start do_read()
@@ -52,7 +48,7 @@ public:
 	bool started() const;
 
 	// return link to socket of current client
-	ip::tcp::socket& sock();
+	ip::tcp::socket & sock();
 
 	// get user name
 	std::string username() const;
@@ -64,7 +60,7 @@ public:
 private:
 	void on_read(const error_code & err, size_t bytes);
 
-	void on_login(const std::string msg);
+	void on_login(const std::string & msg);
 
 	void on_ping();
 
@@ -74,19 +70,19 @@ private:
 
 	void post_check_ping();
 
-	void on_write(const error_code& err, size_t bytes);
+	void on_write(const error_code & err, size_t bytes);
 
-		error_code do_get_fibo(size_t n);
+		error_code do_get_fibo(size_t n) ;
 
-		void on_get_fibo(const size_t n, error_code& err);
+		void on_get_fibo(const size_t n, error_code & err);
 
-		void on_fibo(const std::string msg);
+		void on_fibo(const std::string & msg);
 
 	void do_read();
 
-	void do_write(const std::string& msg);
+	void do_write(const std::string & msg);
 
-	size_t read_complete(const error_code& err, size_t bytes);
+	size_t read_complete(const error_code & err, size_t bytes);
 
 
 	mutable boost::recursive_mutex cs_;
