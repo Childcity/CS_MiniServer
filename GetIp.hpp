@@ -1,14 +1,4 @@
-#pragma once
-#include <list>
-#include <assert.h>
-#include <WS2tcpip.h> // For Winsock
-#include <iphlpapi.h>
-#pragma comment(lib, "ws2_32.lib") // Winsock library file
-#pragma comment(lib, "IPHLPAPI.lib")
-
-struct IpAddresses{
-	std::list<std::string> mIpv4, mIpv6;
-};
+#include "GetIp.h"
 
 void GetIpAddresses(IpAddresses & ipAddrs)
 {

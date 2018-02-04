@@ -1,22 +1,27 @@
 #pragma once
 //#define BOOST_ASIO_ENABLE_HANDLER_TRACKING // for asio debuging
 //#define GOOGLE_STRIP_LOG 0 // cut all glog strings from .exe
-#include <iostream>
-#include <string>
-
-#include "GetIp.hpp"
+//#include <iostream>
+//#include <string>
+//#include <locale>
+//
+#include "main.h"
+#include "GetIp.h"
 #include "CServer.h"
 
-#include "glog\logging.h"
-#include <boost\asio.hpp> 
+//#include "glog\logging.h"
+//#include <boost\asio.hpp> 
 
 using namespace std;
 
 void ShowUsage(const char *argv0);
 
+WCHAR ConectionString[512];
+HWND hWnd;
+
 void main(int argc, char **argv)
 {
-	system("chcp 65001>nul");
+	setlocale(LC_CTYPE, "");
 
 	//Init Glog
 	//fLS::FLAGS_log_dir = "logs\\";
@@ -25,6 +30,10 @@ void main(int argc, char **argv)
 	try
 	{
 		boost::asio::io_context io_context ;
+
+		WCHAR Conection[] = L"Driver={SQL Server};Server=MAXWELL;Database=StopNet4; Uid=sa; Pwd=111111;";
+		wmemcpy_s(ConectionString, sizeof(ConectionString), Conection, sizeof(Conection)/sizeof(WCHAR));
+		hWnd = GetDesktopWindow();
 
 		if( argc == 3 )
 			CServer Server(io_context, std::atoi(argv[1]), std::atoi(argv[2]));
@@ -52,7 +61,7 @@ void ShowUsage( const char * argv0 )
 
 	int i = 1;
 	cout << i++ << ". 127.0.0.1" << endl;
-	for( auto var : ips.mIpv4 )
+	for( auto & var : ips.mIpv4 )
 		cout << i++ << ". " << var << endl;
 
 	cout << "\nPress ENTER to exit..." <<endl;

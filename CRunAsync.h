@@ -1,12 +1,11 @@
 #pragma once
-#define _WIN32_WINNT 0x0501
-
-#include <boost/thread.hpp>
-#include <boost/bind.hpp>
-#include <boost/asio.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
-#include <vector>
+//#define _WIN32_WINNT 0x0501
+//#include <boost/thread.hpp>
+//#include <boost/bind.hpp>
+//#include <boost/asio.hpp>
+//#include <boost/shared_ptr.hpp>
+//#include <boost/enable_shared_from_this.hpp>
+//#include <vector>
 
 using namespace boost::asio;
 
