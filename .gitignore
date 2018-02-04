@@ -297,3 +297,7 @@ __pycache__/
 *.btm.cs
 *.odx.cs
 *.xsd.cs
+
+glog-0.3.5/
+[Ll]ogs/
+TestWithMSDB/
