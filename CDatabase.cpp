@@ -1,46 +1,23 @@
 #include "CDatabase.h"
 
-boost::recursive_mutex driverConnect;
-
-/*******************************************/
-/* Macro to call ODBC functions and        */
-/* report an error on failure.             */
-/* Takes handle, handle type, and stmt     */
-/*******************************************/
-
-#define TRYODBC(h, ht, x)   {   RETCODE rc = x;\
-                                if (rc != SQL_SUCCESS) \
-                                { \
-                                    HandleDiagnosticRecord (h, ht, rc); \
-									return; \
-                                } \
-                            }
-
-
-/*****************************************/
-/* Some constants                        */
-/*****************************************/
-
-
-#define DISPLAY_MAX 50          // Arbitrary limit on column width to display
-#define DISPLAY_FORMAT_EXTRA 3  // Per column extra display bytes (| <data> )
-#define DISPLAY_FORMAT      L"%c %*.*s "
-#define DISPLAY_FORMAT_C    L"%c %-*.*s "
-#define NULL_SIZE           6   // <NULL>
-
-#define PIPE                L'|'
-
-#define countof(arr) (sizeof(arr) / sizeof(arr[0]))
-
-SHORT   gHeight = 80;       // Users screen height
 
 namespace ODBCDatabase
 {
 
-	CDatabase::CDatabase(WCHAR delim):
-		delim_(delim)
+	// mutex to call SQLDriverConnectW. This func crashes in multythread
+	boost::recursive_mutex driverConnect;
+
+	CDatabase::CDatabase(const wstring delim)
 	{
 		connected_ = false;
+
+		if( !delim.empty() )
+		{
+			delim_ = delim;
+		} else
+		{
+			delim_ = L",";
+		}
 
 		RETCODE retCode;
 		hEnv_ = NULL;
@@ -50,7 +27,7 @@ namespace ODBCDatabase
 		// Allocate an environment
 		if( SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &hEnv_) == SQL_ERROR )
 		{
-			fwprintf(stderr, L"Unable to allocate an environment handle\n");
+			fwprintf(stderr, L"Unable to allocate an environment handle (can't connect to database)!\n");
 			return;
 		}
 
@@ -128,7 +105,7 @@ namespace ODBCDatabase
 
 		bool result;
 
-		// Allocate memory for each column 
+		// allocate memory for each column 
 
 		result = allocateBindings(cCols);
 		if( !result )
@@ -136,7 +113,7 @@ namespace ODBCDatabase
 			return;
 		}
 
-		// Set the display mode and write the titles
+		// get the titles
 
 		result = getTitles();
 		if( !result )
@@ -150,11 +127,17 @@ namespace ODBCDatabase
 
 		do
 		{
+			for( auto & thisBinding : bindings_ )
+			{
+				ZeroMemory(thisBinding.wszBuffer, thisBinding.cDisplaySize);
+			}
+
 			// Fetch a row
 
 			retCode = SQLFetch(hStmt_);
 			if( retCode == SQL_ERROR || retCode == SQL_INVALID_HANDLE )
 			{
+				HandleDiagnosticRecord(hStmt_, SQL_HANDLE_STMT, retCode);
 				Disconnect();
 				return;
 			} else if( retCode == SQL_NO_DATA_FOUND )
@@ -167,40 +150,15 @@ namespace ODBCDatabase
 
 				for(auto & thisBinding: bindings_ )
 				{
-						/*WCHAR *pResultTmp = new WCHAR[thisBinding.cDisplaySize + 1];
-						if( !pResultTmp )
-						{
-							Disconnect();
-							return;
-						}
-						if( thisBinding.indPtr != SQL_NULL_DATA )
-						{
-							wsprintfW(pResultTmp, 
-									L"%c %*.*s ",
-									PIPE,
-									thisBinding.cDisplaySize,
-									thisBinding.cDisplaySize,
-									thisBinding.wszBuffer);
-						} else
-						{
-							wsprintfW(pResultTmp, 
-									DISPLAY_FORMAT_C,
-									PIPE,
-									thisBinding.cDisplaySize,
-									thisBinding.cDisplaySize,
-									L"<NULL>");
-						}
-						answer_ += std::move(std::wstring(pResultTmp));
-						delete[] pResultTmp;*/
-
 					if( thisBinding.indPtr != SQL_NULL_DATA )
-						{
-							answer_ += std::move(std::wstring(thisBinding.wszBuffer));
-							answer_.push_back(delim_);
-						} else
-						{
-							answer_ += std::move(std::wstring(L"<NULL>" + delim_));
-						}
+					{
+						answer_ += wstring(thisBinding.wszBuffer) + delim_;
+					} else
+					{
+						answer_ += wstring(L"<NULL>" + delim_);
+					}
+
+					//Ќужно придумать способ чтобы стерать бувер!!
 					
 				}
 				answer_.push_back(L'\n');
@@ -218,11 +176,19 @@ namespace ODBCDatabase
 		bindings_.clear();
 	}
 
+	/************************************************************************
+	/* allocateBindings:  Get column information and allocate bindings_
+	/* for each column.
+	/*
+	/* Parameters:
+	/*      cCols       Number of columns in the result set
+	/************************************************************************/
+	
 	bool CDatabase::allocateBindings(SQLSMALLINT & cCols)
 	{
 		Binding         ThisBinding;
 		SQLLEN          cchDisplay = 0, ssType;
-		SQLSMALLINT     cchColumnNameLength;
+		//SQLSMALLINT     cchColumnNameLength; // column name length in cheracters
 		RETCODE			retCode;
 
 		for( SQLSMALLINT iCol = 1; iCol <= cCols; iCol++ )
@@ -269,8 +235,8 @@ namespace ODBCDatabase
 
 
 			// Arbitrary limit on display size
-			if( cchDisplay > DISPLAY_MAX )
-				cchDisplay = DISPLAY_MAX;
+			if( cchDisplay > MAX_WIDTH_OF_DATA_IN_COLOMN )
+				cchDisplay = MAX_WIDTH_OF_DATA_IN_COLOMN;
 
 			// Allocate a buffer big enough to hold the text representation
 			// of the data.  Add one character for the null terminator
@@ -283,6 +249,8 @@ namespace ODBCDatabase
 				Disconnect();
 				return false;
 			}
+
+			ZeroMemory(ThisBinding.wszBuffer, cchDisplay + 1);
 
 			// Map this buffer to the driver's buffer.   At Fetch time,
 			// the driver will fill in this data.  Note that the size is 
@@ -304,7 +272,7 @@ namespace ODBCDatabase
 			// Now set the display size that we will use to display
 			// the data.   Figure out the length of the column name
 
-			retCode = SQLColAttributeW(hStmt_, iCol, SQL_DESC_NAME, NULL, 0, &cchColumnNameLength, NULL);
+			/*retCode = SQLColAttributeW(hStmt_, iCol, SQL_DESC_NAME, NULL, 0, &cchColumnNameLength, NULL);
 			if( retCode != SQL_SUCCESS )
 			{
 				HandleDiagnosticRecord(hStmt_, SQL_HANDLE_STMT, retCode);
@@ -316,6 +284,9 @@ namespace ODBCDatabase
 			}
 
 			ThisBinding.cDisplaySize = max((SQLSMALLINT)cchDisplay, cchColumnNameLength);
+*/
+
+			ThisBinding.cDisplaySize = cchDisplay + 1;
 
 			if( ThisBinding.cDisplaySize < NULL_SIZE )
 				ThisBinding.cDisplaySize = NULL_SIZE;
@@ -329,12 +300,12 @@ namespace ODBCDatabase
 	bool CDatabase::getTitles()
 	{
 		RETCODE retCode;
-		WCHAR           wszTitle[DISPLAY_MAX];
+		WCHAR           wszTitle[MAX_WIDTH_OF_DATA_IN_COLOMN];
 		SQLSMALLINT     iCol = 1;
 
 		for( auto & thisBinding : bindings_ )
 		{
-			ZeroMemory(wszTitle, DISPLAY_MAX);
+			ZeroMemory(wszTitle, MAX_WIDTH_OF_DATA_IN_COLOMN);
 
 			retCode = SQLColAttributeW(hStmt_, iCol++, SQL_DESC_NAME, wszTitle, sizeof(wszTitle), /*Note count of bytes!*/ NULL, NULL);
 			if( retCode != SQL_SUCCESS )
@@ -347,7 +318,7 @@ namespace ODBCDatabase
 				}
 			}
  
-			size_t len = 0;
+				size_t len = 0;
 				for(auto &ch: wszTitle )
 				{
 					if( ch == 0 )
@@ -358,11 +329,10 @@ namespace ODBCDatabase
 					len++;
 				}
 
-				answer_ += std::move(std::wstring(wszTitle, len));
-				answer_.push_back(delim_);
+				answer_ += wstring(wszTitle, len) + delim_;
 				
 		}	
-		answer_ += std::move(std::wstring(L"\n\n"));
+		answer_ += std::move(wstring(L"\n\n"));
 
 		return true;
 	}
@@ -408,7 +378,7 @@ namespace ODBCDatabase
 
 	}
 
-	bool CDatabase::operator<<(std::wstring && query)
+	bool CDatabase::operator<<(wstring && query)
 	{	
 		RETCODE     retCode;
 		SQLSMALLINT sNumResults;
@@ -456,8 +426,8 @@ namespace ODBCDatabase
 					}
 
 					if( sNumResults > 0 ){
-						DisplayResults(hStmt_, sNumResults);
-						//getAnswer(sNumResults);
+						//DisplayResults(hStmt_, sNumResults);
+						getAnswer(sNumResults);
 					} else
 					{
 						SQLLEN cRowCount;
@@ -473,7 +443,7 @@ namespace ODBCDatabase
 
 						if( cRowCount >= 0 )
 						{
-							answer_ += std::move(std::wstring(cRowCount + cRowCount == 1 ? L"row" : L"rows"));
+							answer_ += wstring(cRowCount + cRowCount == 1 ? L"row" : L"rows");
 						}
 
 					}
@@ -511,324 +481,9 @@ namespace ODBCDatabase
 		return connected_;
 	}
 
-	void CDatabase::operator>>(std::wstring & str) const
+	void CDatabase::operator>>(wstring & str) const
 	{
-		str = std::move(answer_);
-	}
-
-
-
-
-
-
-	/************************************************************************
-	/* DisplayResults: display results of a select query
-	/*
-	/* Parameters:
-	/*      hStmt_      ODBC statement handle
-	/*      cCols      Count of columns
-	/************************************************************************/
-
-	void CDatabase::DisplayResults(HSTMT hStmt_, SQLSMALLINT cCols)
-	{
-		BINDING         *pFirstBinding, *pThisBinding;
-		SQLSMALLINT     cDisplaySize;
-		RETCODE         RetCode = SQL_SUCCESS;
-		int             iCount = 0;
-
-		// Allocate memory for each column 
-
-		AllocateBindings(hStmt_, cCols, &pFirstBinding, &cDisplaySize);
-
-		// Set the display mode and write the titles
-
-		DisplayTitles(hStmt_, cDisplaySize + 1, pFirstBinding);
-
-
-		// Fetch and display the data
-
-		bool fNoData = false;
-
-		do
-		{
-			// Fetch a row
-
-			TRYODBC(hStmt_, SQL_HANDLE_STMT, RetCode = SQLFetch(hStmt_));
-
-			if( RetCode == SQL_NO_DATA_FOUND )
-			{
-				fNoData = true;
-			} else
-			{
-
-				// Display the data.   Ignore truncations
-
-				for( pThisBinding = pFirstBinding;
-					pThisBinding;
-					pThisBinding = pThisBinding->sNext )
-				{
-					if( pThisBinding->indPtr != SQL_NULL_DATA )
-					{
-						wprintf(pThisBinding->fChar ? DISPLAY_FORMAT_C : DISPLAY_FORMAT,
-								PIPE,
-								pThisBinding->cDisplaySize,
-								pThisBinding->cDisplaySize,
-								pThisBinding->wszBuffer);
-					} else
-					{
-						wprintf(DISPLAY_FORMAT_C,
-								PIPE,
-								pThisBinding->cDisplaySize,
-								pThisBinding->cDisplaySize,
-								L"<NULL>");
-					}
-				}
-				wprintf(L" %c\n", PIPE);
-			}
-		} while( !fNoData );
-
-		SetConsole(cDisplaySize + 2, TRUE);
-		wprintf(L"%*.*s", cDisplaySize + 2, cDisplaySize + 2, L" ");
-		SetConsole(cDisplaySize + 2, FALSE);
-		wprintf(L"\n");
-
-	Exit:
-		// Clean up the allocated buffers
-
-		while( pFirstBinding )
-		{
-			pThisBinding = pFirstBinding->sNext;
-			free(pFirstBinding->wszBuffer);
-			free(pFirstBinding);
-			pFirstBinding = pThisBinding;
-		}
-	}
-
-	/************************************************************************
-	/* AllocateBindings:  Get column information and allocate bindings_
-	/* for each column.
-	/*
-	/* Parameters:
-	/*      hStmt_      Statement handle
-	/*      cCols       Number of columns in the result set
-	/*      *lppBinding Binding pointer (returned)
-	/*      lpDisplay   Display size of one line
-	/************************************************************************/
-
-	void CDatabase::AllocateBindings(HSTMT         hStmt_,
-									 SQLSMALLINT   cCols,
-									 BINDING       **ppBinding,
-									 SQLSMALLINT   *pDisplay)
-	{
-		SQLSMALLINT     iCol;
-		BINDING         *pThisBinding, *pLastBinding = NULL;
-		SQLLEN          cchDisplay = 0, ssType;
-		SQLSMALLINT     cchColumnNameLength;
-
-		*pDisplay = 0;
-
-		for( iCol = 1; iCol <= cCols; iCol++ )
-		{
-			pThisBinding = (BINDING *)(malloc(sizeof(BINDING)));
-			if( !(pThisBinding) )
-			{
-				fwprintf(stderr, L"Out of memory!\n");
-				exit(-100);
-			}
-
-			if( iCol == 1 )
-			{
-				*ppBinding = pThisBinding;
-			} else
-			{
-				pLastBinding->sNext = pThisBinding;
-			}
-			pLastBinding = pThisBinding;
-
-			pThisBinding->sNext = NULL;
-
-
-			// Figure out the display length of the column (we will
-			// bind to char since we are only displaying data, in general
-			// you should bind to the appropriate C type if you are going
-			// to manipulate data since it is much faster...)
-
-			TRYODBC(hStmt_,
-					SQL_HANDLE_STMT,
-					SQLColAttributeW(hStmt_,
-					iCol,
-					SQL_DESC_DISPLAY_SIZE,
-					NULL,
-					0,
-					NULL,
-					&cchDisplay));
-
-
-			// Figure out if this is a character or numeric column; this is
-			// used to determine if we want to display the data left- or right-
-			// aligned.
-
-			// SQL_DESC_CONCISE_TYPE maps to the 1.x SQL_COLUMN_TYPE. 
-			// This is what you must use if you want to work
-			// against a 2.x driver.
-
-			TRYODBC(hStmt_,
-					SQL_HANDLE_STMT,
-					SQLColAttributeW(hStmt_,
-					iCol,
-					SQL_DESC_CONCISE_TYPE,
-					NULL,
-					0,
-					NULL,
-					&ssType));
-
-
-			pThisBinding->fChar = (ssType == SQL_CHAR ||
-								   ssType == SQL_VARCHAR ||
-								   ssType == SQL_LONGVARCHAR);
-
-
-			// Arbitrary limit on display size
-			if( cchDisplay > DISPLAY_MAX )
-				cchDisplay = DISPLAY_MAX;
-
-			// Allocate a buffer big enough to hold the text representation
-			// of the data.  Add one character for the null terminator
-
-			pThisBinding->wszBuffer = (WCHAR *)malloc((cchDisplay + 1) * sizeof(WCHAR));
-
-			if( !(pThisBinding->wszBuffer) )
-			{
-				fwprintf(stderr, L"Out of memory!\n");
-				exit(-100);
-			}
-
-			// Map this buffer to the driver's buffer.   At Fetch time,
-			// the driver will fill in this data.  Note that the size is 
-			// count of bytes (for Unicode).  All ODBC functions that take
-			// SQLPOINTER use count of bytes; all functions that take only
-			// strings use count of characters.
-
-			TRYODBC(hStmt_,
-					SQL_HANDLE_STMT,
-					SQLBindCol(hStmt_,
-					iCol,
-					SQL_C_WCHAR,
-					(SQLPOINTER)pThisBinding->wszBuffer,
-					(cchDisplay + 1) * sizeof(WCHAR),
-					&pThisBinding->indPtr));
-
-
-			// Now set the display size that we will use to display
-			// the data.   Figure out the length of the column name
-
-			TRYODBC(hStmt_,
-					SQL_HANDLE_STMT,
-					SQLColAttributeW(hStmt_,
-					iCol,
-					SQL_DESC_NAME,
-					NULL,
-					0,
-					&cchColumnNameLength,
-					NULL));
-
-			pThisBinding->cDisplaySize = max((SQLSMALLINT)cchDisplay, cchColumnNameLength);
-			if( pThisBinding->cDisplaySize < NULL_SIZE )
-				pThisBinding->cDisplaySize = NULL_SIZE;
-
-			*pDisplay += pThisBinding->cDisplaySize + DISPLAY_FORMAT_EXTRA;
-
-		}
-	}
-
-
-	/************************************************************************
-	/* DisplayTitles: print the titles of all the columns and set the
-	/*                shell window's width
-	/*
-	/* Parameters:
-	/*      hStmt_          Statement handle
-	/*      cDisplaySize   Total display size
-	/*      pBinding        list of binding information
-	/************************************************************************/
-
-	void CDatabase::DisplayTitles(HSTMT     hStmt_,
-								  DWORD     cDisplaySize,
-								  BINDING   *pBinding)
-	{
-		WCHAR           wszTitle[DISPLAY_MAX];
-		SQLSMALLINT     iCol = 1;
-
-		SetConsole(cDisplaySize + 2, TRUE);
-
-		for( ; pBinding; pBinding = pBinding->sNext )
-		{
-			TRYODBC(hStmt_,
-					SQL_HANDLE_STMT,
-					SQLColAttributeW(hStmt_,
-					iCol++,
-					SQL_DESC_NAME,
-					wszTitle,
-					sizeof(wszTitle), // Note count of bytes!
-					NULL,
-					NULL));
-
-			wprintf(DISPLAY_FORMAT_C,
-					PIPE,
-					pBinding->cDisplaySize,
-					pBinding->cDisplaySize,
-					wszTitle);
-		}
-
-	Exit:
-
-		wprintf(L" %c", PIPE);
-		SetConsole(cDisplaySize + 2, FALSE);
-		wprintf(L"\n");
-
-	}
-
-
-
-	/************************************************************************
-	/* SetConsole: sets console display size and video mode
-	/*
-	/*  Parameters
-	/*      siDisplaySize   Console display size
-	/*      fInvert         Invert video?
-	/************************************************************************/
-
-	void CDatabase::SetConsole(DWORD dwDisplaySize,
-							   BOOL  fInvert)
-	{
-		HANDLE                          hConsole;
-		CONSOLE_SCREEN_BUFFER_INFO      csbInfo;
-
-		// Reset the console screen buffer size if necessary
-
-		hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-
-		if( hConsole != INVALID_HANDLE_VALUE )
-		{
-			if( GetConsoleScreenBufferInfo(hConsole, &csbInfo) )
-			{
-				if( csbInfo.dwSize.X <  (SHORT)dwDisplaySize )
-				{
-					csbInfo.dwSize.X = (SHORT)dwDisplaySize;
-					SetConsoleScreenBufferSize(hConsole, csbInfo.dwSize);
-				}
-
-				gHeight = csbInfo.dwSize.Y;
-			}
-
-			if( fInvert )
-			{
-				SetConsoleTextAttribute(hConsole, (WORD)(csbInfo.wAttributes | BACKGROUND_BLUE));
-			} else
-			{
-				SetConsoleTextAttribute(hConsole, (WORD)(csbInfo.wAttributes & ~(BACKGROUND_BLUE)));
-			}
-		}
+		str = answer_;
 	}
 
 }

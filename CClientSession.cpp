@@ -1,17 +1,9 @@
 #include "CClientSession.h"
 
-//class CClientSession;
 boost::recursive_mutex clients_cs;
 typedef boost::shared_ptr<CClientSession> client_ptr;
 typedef std::vector<client_ptr> cli_ptr_vector;
 cli_ptr_vector clients;
-
-// to define the length of array before comilation
-template <typename T, std::size_t N>
-constexpr std::size_t countof(T const (&)[N]) noexcept
-{
-	return N;
-}
 
 void CClientSession::start()
 {
@@ -71,7 +63,7 @@ ip::tcp::socket& CClientSession::sock()
 	return sock_;
 }
 
-std::string CClientSession::username() const
+string CClientSession::username() const
 {
 	boost::recursive_mutex::scoped_lock lk(cs_);
 	return username_;
@@ -91,7 +83,7 @@ void CClientSession::on_read(const error_code & err, size_t bytes)
 	if( !started() )
 		return;
 
-	// the static variable will be one for ALL INSTANCES OF THE CLASS that are created
+	// the static variable and them size will be one for ALL INSTANCES OF THE CLASS that are created
 	static constexpr const char login[] = "login ";
 	static constexpr const char fibo[] = "fibo ";
 	static constexpr const char query[] = "query ";
@@ -113,48 +105,33 @@ void CClientSession::on_read(const error_code & err, size_t bytes)
 		tmp_read_buffer_[bytes] = 0;
 	}
 
-	VLOG(1) << "DEBUG: received msg: '" << tmp_read_buffer_.get() << '\''<<bytes<<' ' << memcmp(tmp_read_buffer_.get(), who, who_size - 1) << std::endl;
+	VLOG(1) << "DEBUG: received msg: '" << tmp_read_buffer_.get() << '\''
+			<< "DEBUG: received bytes: " << bytes <<' ' << memcmp(tmp_read_buffer_.get(), who, who_size - 1)
+			<< std::endl;
 
 	if( bytes > login_size && memcmp(tmp_read_buffer_.get(), login, login_size - 1) == 0 )
 	{
-		std::string const msg(tmp_read_buffer_.get(), bytes);
-		on_login(std::move(msg));
-	} else if( bytes == ping_size+1 && memcmp(tmp_read_buffer_.get(), ping, ping_size - 1) == 0 )
+		on_login(move(string(tmp_read_buffer_.get(), bytes)));
+	} else if( bytes == ping_size/*+1*/ && memcmp(tmp_read_buffer_.get(), ping, ping_size - 1) == 0 )
 	{
 		on_ping();
-	} else if( bytes == who_size+1 && memcmp(tmp_read_buffer_.get(), who, who_size - 1) == 0 )
+	} else if( bytes == who_size/*+1*/ && memcmp(tmp_read_buffer_.get(), who, who_size - 1) == 0 )
 	{
 		on_clients();
 	}  else if( bytes > fibo_size && memcmp(tmp_read_buffer_.get(), fibo, fibo_size - 1) == 0 )
 	{
-		std::string const msg(tmp_read_buffer_.get(), bytes);
-		on_fibo(std::move(msg));
+		on_fibo(move(string(tmp_read_buffer_.get(), bytes)));
 	} else if( bytes > query_size && memcmp(tmp_read_buffer_.get(), query, query_size - 1) == 0 )
 	{
-		std::string const msg(tmp_read_buffer_.get(), bytes);
-		on_query(std::move(msg));
+		on_query(move(string(tmp_read_buffer_.get(), bytes)));
 	} else
 	{
-		do_write(std::move(std::string("command undefined\n")));
-		LOG(INFO) << "Invalid msg from client " << username() << ": '" << tmp_read_buffer_.get() << '\'' <<std::endl;
+		do_write(move(string("command undefined\n")));
+		LOG(WARNING) << "Invalid msg from client " << username() << ": '" << tmp_read_buffer_.get() << '\'' <<std::endl;
 	}
-
-	/*if( msg.find("login ") == 0 )
-	on_login(msg);
-	else if( msg.find("ping") == 0 )
-	on_ping();
-	else if( msg.find("who") == 0 )
-	on_clients();
-	else if( msg.find("fibo ") == 0 )
-	do_fibo(msg);
-	else
-	{
-	do_write("command undefined\n");
-	LOG(INFO) << "Invalid msg from client: " << username()<<" - " << msg;
-	}*/
 }
 
-void CClientSession::on_login(const std::string && msg)
+void CClientSession::on_login(const string && msg)
 {
 	boost::recursive_mutex::scoped_lock lk(cs_);
 	std::istringstream in(msg);
@@ -163,14 +140,14 @@ void CClientSession::on_login(const std::string && msg)
 
 	VLOG(1) << "DEBUG: logged in: " << username_ << std::endl;
 
-	do_write(std::move(std::string("login ok\n")));
+	do_write(move(string("login ok\n")));
 	update_clients_changed();
 }
 
 void CClientSession::on_ping()
 {
 	boost::recursive_mutex::scoped_lock lk(cs_);
-	do_write(clients_changed_ ? std::move(std::string("ping client_list_changed\n")) : std::move(std::string("ping OK\n")));
+	do_write(clients_changed_ ? move(string("ping client_list_changed\n")) : move(string("ping OK\n")));
 
 	// we have notified client, that clients list was changed yet,
 	// so clients_changed_ should be false 
@@ -185,7 +162,7 @@ void CClientSession::on_clients()
 		clients_copy = clients;
 	}
 
-	std::string msg;
+	string msg;
 
 	for( auto it : clients_copy )
 		msg += it->username() + " ";
@@ -193,7 +170,7 @@ void CClientSession::on_clients()
 	//for( cli_ptr_vector::const_iterator b = copy.begin(), e = copy.end(); b != e; ++b )
 	//	msg += (*b)->username() + " ";
 
-	do_write(std::move(std::string("clients: " + msg + "\n")));
+	do_write(move(string("clients: " + msg + "\n")));
 }
 
 //void do_ping()
@@ -256,20 +233,22 @@ void CClientSession::on_write(const error_code & err, size_t bytes)
 
 		boost::recursive_mutex::scoped_lock cs_;
 		for( auto it : fibo_res )
+		{
 			if( it.first == n )
 			{
 				VLOG(1) << "DEBUG: fibo for: " << n << " = " << it.second << std::endl;
-				return;
+				do_write(move(string("fibo: " + std::to_string(it.second) + "\n")));
+				break;
 			}
+		}
 
-		//do_write("RESULT\n");
 	}
 
-	void CClientSession::on_fibo(const std::string && msg)
+	void CClientSession::on_fibo(const string && msg)
 	{
 		std::istringstream in(msg);
 		in.ignore(5);
-		short n; in >> n;
+		size_t n; in >> n;
 		CRunAsync::new_()->add(boost::bind(&CClientSession::do_get_fibo, shared_from_this(), n)
 								, boost::bind(&CClientSession::on_get_fibo, shared_from_this(), n, _1)
 								, io_context_);
@@ -279,21 +258,29 @@ void CClientSession::on_write(const error_code & err, size_t bytes)
 
 
 
-CClientSession::error_code CClientSession::do_ask_db(const std::string query, size_t queryId)
+CClientSession::error_code CClientSession::do_ask_db(const string query, size_t queryId)
 {
-	std::wstring answer;
-	std::wstring wquery(query.begin(), query.end());
+	wstring answer;
 
-	ODBCDatabase::CDatabase db;
+	// try to connect to ODBC driver
+	ODBCDatabase::CDatabase db(L",");
 
+	// if connected, send query to db
 	if( db.ConnectedOk() )
-		db << std::move(wquery);
-	//db >> answer;
+		db << move(wstring(query.begin(), query.end()));
+
+	// get answer from db
+	db >> answer;
+
+
 	std::wcout <<answer;
 
-	boost::recursive_mutex::scoped_lock cs_;
+	// end answer with 'end symbol'
+	answer += move(wstring(L"\n"));
+
 	{
-		res.push_back(std::make_pair(queryId, answer));
+		boost::recursive_mutex::scoped_lock cs_;
+		res.push_back(move(std::make_pair(queryId, move(answer))));
 	}
 
 	return boost::system::error_code(0, boost::system::generic_category());
@@ -306,24 +293,27 @@ void CClientSession::on_answer_db(const size_t queryId, error_code & err)
 
 	if( !started() )
 		return;
-
-	boost::recursive_mutex::scoped_lock cs_;
-	for( auto it : res )
-		if( it.first == queryId )
-		{
-			//VLOG(1) << "DEBUG: answer for: " << queryId << " = " << it.second << std::endl;
-			return;
-		}
-
-	//do_write("RESULT\n");
+	
+	{
+		boost::recursive_mutex::scoped_lock cs_;
+		for( auto & it : res )
+			if( it.first == queryId )
+			{
+				//HERE WE SHOULD zip msg (it.second)
+				do_write(move(string(it.second.begin(), it.second.end())));
+				//VLOG(1) << "DEBUG: answer for: " << queryId << " = " << it.second << std::endl;
+				break;
+			}
+	}
 }
 
-void CClientSession::on_query(const std::string && msg)
+void CClientSession::on_query(const string && msg)
 {
-	srand((unsigned)time(NULL));
+	// we must generate for each query Id to distinguish different query
+	srand((unsigned)time(NULL));// I don't know, if this func threed safe!
 	size_t queryId = rand();
 
-	std::string query(msg.begin() + 6, msg.end());
+	string query(msg.begin() + 6, msg.end());
 
 	CRunAsync::new_()->add(boost::bind(&CClientSession::do_ask_db, shared_from_this(), query, queryId)
 						   , boost::bind(&CClientSession::on_answer_db, shared_from_this(), queryId, _1)
@@ -345,7 +335,7 @@ void CClientSession::do_read()
 	//post_check_ping();
 }
 
-void CClientSession::do_write(const std::string && msg)
+void CClientSession::do_write(const string && msg)
 {
 	if( !started() )
 		return;

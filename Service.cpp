@@ -1,4 +1,4 @@
-#include "GetIp.h"
+#include "Service.h"
 
 void GetIpAddresses(IpAddresses & ipAddrs)
 {
@@ -113,4 +113,29 @@ void GetIpAddresses(IpAddresses & ipAddrs)
 	adapter_addresses = NULL;
 
 	// Cheers!
+}
+
+void GetODBCDrivers(std::list<std::wstring> & lst)
+{
+	HENV hEnv = NULL;
+	WCHAR driver[512], attr[512];
+	SQLSMALLINT driver_ret, attr_ret;
+	SQLUSMALLINT direction = SQL_FETCH_FIRST;
+
+	if( SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &hEnv) == SQL_ERROR || 
+		SQLSetEnvAttr(hEnv, SQL_ATTR_ODBC_VERSION, (void *)SQL_OV_ODBC3, 0) )
+	{
+		LOG(FATAL) << "ODBC: Unable to allocate an environment handle or set atribute (can't connect to database)!" << std::endl;
+		return;
+	}
+
+	while( SQL_SUCCEEDED(SQLDriversW(hEnv, direction, driver, countof(driver),
+		  &driver_ret,
+		  attr, countof(attr),
+		  &attr_ret)) )
+	{
+		direction = SQL_FETCH_NEXT;
+		lst.push_back( driver + std::wstring(L"		- ") + attr);
+	}
+
 }

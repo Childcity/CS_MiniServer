@@ -1,61 +1,41 @@
 #pragma once
-/*#include <windows.h>
-#include <string>
-#include <sqlext.h>
-#include <sql.h>
-#include <list>*/
-
 #include "main.h"
+using std::wstring;
 
 namespace ODBCDatabase
 {
 
-	//boost::recursive_mutex driverConnect;
-
 	class CDatabase{
-		private:
+	public:
+
+		CDatabase(const wstring delim = L",");
+
+		~CDatabase();
+
+		bool operator<<(wstring && os);
+
+		bool ConnectedOk() const;
+		
+		void operator>>(wstring & str) const;
+		
+	private:
 
 		/******************************************/
 		/* Structure to store information about   */
 		/* a column.
 		/******************************************/
 
-		struct BINDING{
-			SQLSMALLINT         cDisplaySize;           /* size to display  */
-			WCHAR               *wszBuffer;             /* display buffer   */
-			SQLLEN              indPtr;                 /* size or null     */
-			BOOL                fChar;                  /* character col?   */
-			struct BINDING  *sNext;                 /* linked list      */
-		};
-
-
 		struct Binding{
 			SQLSMALLINT         cDisplaySize;           /* size to display  */
 			WCHAR               *wszBuffer;             /* display buffer   */
 			SQLLEN              indPtr;                 /* size or null     */
 			BOOL                fChar;                  /* character col?   */
-			struct Binding  *sNext;                 /* linked list      */
+			struct Binding		*sNext;                 /* linked list      */
 		};
-
-	public:
-
-		CDatabase(WCHAR delim = L',');
-
-		~CDatabase();
-
-		bool operator<<(std::wstring && os);
-
-		bool ConnectedOk() const;
-		
-		void operator>>(std::wstring & str) const;
-		
-	private:
 
 		void Disconnect();
 
-		void HandleDiagnosticRecord(SQLHANDLE      hHandle,
-									SQLSMALLINT    hType,
-									RETCODE        RetCode);
+		void HandleDiagnosticRecord(SQLHANDLE hHandle, SQLSMALLINT hType, RETCODE RetCode);
 
 		void CDatabase::getAnswer(SQLSMALLINT & cCols);
 
@@ -63,39 +43,26 @@ namespace ODBCDatabase
 
 		bool CDatabase::getTitles();
 
-						void DisplayResults(HSTMT       hStmt_,
-											SQLSMALLINT cCols);
-
-						void AllocateBindings(HSTMT         hStmt_,
-											  SQLSMALLINT   cCols,
-											  BINDING**     ppBinding,
-											  SQLSMALLINT*  pDisplay);
-
-
-						void DisplayTitles(HSTMT    hStmt_,
-										   DWORD    cDisplaySize,
-										   BINDING* pBinding);
-
-						void SetConsole(DWORD   cDisplaySize,
-										BOOL    fInvert);
-
 		CDatabase(CDatabase const&) = delete;
 		CDatabase operator=(CDatabase const&) = delete;
 
 	private:
 		
+		enum { MAX_WIDTH_OF_DATA_IN_COLOMN = 4096 }; // in characters
+		enum{ NULL_SIZE = 6 }; // size of <NULL>
+
 		std::list<Binding>  bindings_;
 		
-		WCHAR delim_;
+		wstring delim_;
 
-		std::wstring answer_;
+		wstring answer_;
 		
 		bool connected_;
 
 
-		SQLHENV     hEnv_;
-		SQLHDBC     hDbc_;
-		SQLHSTMT    hStmt_;
+		SQLHENV     hEnv_; // ODBC Environment handle
+		SQLHDBC     hDbc_; // õç õýíäë
+		SQLHSTMT    hStmt_; // ODBC Statement handle
 	};
 
 }
