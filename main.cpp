@@ -1,63 +1,98 @@
-#include<iostream>
-#include<string>
-#include<thread>
+#pragma once
+#include "main.h"
+#include "CDatabase.h"
+#include "Service.h"
+#include "CServer.h"
 
-#include"GetIp.hpp"
-#include "TcpListener.hpp"
+using std::endl;
+using std::exception;
 
-using namespace std;
+void ShowUsage(const char *argv0);
 
-void Listener_MessageReceived(CTcpListener *listener, int client, string msg);
+WCHAR ConectionString[512];
+HWND hWnd;
 
-void main( int arc, char **argv )
+void main(int argc, char **argv)
 {
-	if( arc != 3 )
+	//std::locale cp1251_locale("ru_RU.CP866");
+	//std::locale::global(cp1251_locale);
+	setlocale(LC_CTYPE, "");
+
+	//Init Glog
+	//fLS::FLAGS_log_dir = "logs\\";
+	google::InitGoogleLogging(argv[0]);
+
+	try 
 	{
-		cout <<"Usage:" <<"csserver.exe [ipAdress] [port]" <<endl <<endl;
-		//return;
+		boost::asio::io_context io_context ;
 
-		// I do not know if this is necessary, but I think that in the phase of development it will not be unnecessary
-		IpAddresses ips; // Declare structure, that consists of list of Ipv4 and Ipv6 ip addresses
-		GetIpAddresses(ips); // Get list of ipv4 and ipv6 from possible interfaces
+		//wifstream file("user.cfg");
+		//ZeroMemory(ConectionString, sizeof(ConectionString));
+		//file.getline(ConectionString, 512);
 
-		cout <<"Possible ip addresses on this machine:" <<endl;
+		WCHAR Conection[150] = L"Driver={SQL Server};Server=MAXWELL;Database=StopNet4; Uid=sa; Pwd=111111;";
+		wmemcpy_s(ConectionString, sizeof(ConectionString), Conection, sizeof(Conection)/sizeof(WCHAR));
+		
 
-		int i = 1;
-		cout << i++ << ". 127.0.0.1" << endl;
-		for( auto var : ips.mIpv4 )
-			cout <<i++ << ". " << var << endl;
 
-		cin.get();
-		return;
-	}
+		hWnd = GetDesktopWindow(); // need for connection to ODBC driver
 
-	CTcpListener server(argv[1], stoi(argv[2]), Listener_MessageReceived);
+		// try connect to db, to see if everything is ok with connection string
+		// and db is well configured
 
-	if( server.Init() )
+		// try to connect to ODBC driver
+		ODBCDatabase::CDatabase db;
+
+		// if connected, send query to db
+		if( db.ConnectedOk() )
+		{
+			LOG(INFO) << "Connection to db was success" << endl;
+			db.~CDatabase();
+		} else
+		{
+			LOG(FATAL) << "Can't connect to db. Check connection string in configuration file" << endl;
+		}
+
+		if( argc == 3 )
+			CServer Server(io_context, std::atoi(argv[1]), std::atoi(argv[2]));
+		else if( argc == 4 )
+			CServer Server(io_context, argv[1], std::atoi(argv[2]), std::atoi(argv[3])); 
+		else
+			ShowUsage(argv[0]);
+
+	} catch(exception& e)
 	{
-		cout << "Server is working on: " << arc << argv[1] << ':' << argv[2] << endl;
-		server.Run();
+		LOG(FATAL) << "Server has been crashed: " << e.what() << std::endl;
 	}
-
 }
 
-void Listener_MessageReceived(CTcpListener *listener, int client, string msg)
-{ 
-	try
-	{
-		cout << "SOCKET #" << client << ": " << msg << "\r\n";
+void ShowUsage( const char * argv0 )
+{
+	FLAGS_alsologtostderr = true; //to make logging both on stderr and logfile 
+	LOG(INFO) << "Usage:" << argv0 << " [ipAddress] [port] [threds_number]" << endl << endl;
+	//return;
 
-		// TODO: Do some work with DB
+	// I do not know if this is necessary, but I think that in the phase of development it will not be unnecessary
+	IpAddresses ips; // Declare structure, that consists of list of Ipv4 and Ipv6 ip addresses
+	std::list<std::wstring> posDrivers; // List of possible ODBC drivers on this machine
+	GetIpAddresses(ips); // Get list of ipv4 and ipv6 from possible interfaces
 
+	LOG(INFO) << "Possible ipV4 addresses on this machine:" << endl;
 
-		//Send answer to client
-		std::ostringstream ss;
-		ss << "SOCKET #" << client << ": " << msg << "\r\n";
-		string strOut = ss.str();
-		listener->Send(client, strOut);
-	} catch( ... )
-	{
-		listener->InformExeption(current_exception());
-	}
+	int i = 1;
+	LOG(INFO) << i++ << ". 127.0.0.1" << endl;
+	for( auto & var : ips.mIpv4 )
+		LOG(INFO) << i++ << ". " << var << endl;
 	
+	LOG(INFO) << "List of possible ODBC drivers on this machine:"  << endl;
+
+	GetODBCDrivers(posDrivers);
+
+	i = 1;
+	for( auto & var : posDrivers )
+		LOG(INFO) << i++ << ". " << std::string(var.begin(), var.end()) <<endl;
+
+	LOG(INFO) << "Exiting...";
+	//LOG(INFO) << "\nPress ENTER to exit..." <<endl;
+	//cin.get();
 }
