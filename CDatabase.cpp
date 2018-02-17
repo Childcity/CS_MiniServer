@@ -27,7 +27,7 @@ namespace ODBCDatabase
 		// Allocate an environment
 		if( SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &hEnv_) == SQL_ERROR )
 		{
-			fwprintf(stderr, L"Unable to allocate an environment handle (can't connect to database)!\n");
+			LOG(WARNING) << "Unable to allocate an environment handle (can't connect to database)!" << std::endl;
 			return;
 		}
 
@@ -64,20 +64,20 @@ namespace ODBCDatabase
 			}
 
 		connected_ = true;
-		fwprintf(stderr, L"ODBC: Connected!\n");
+		VLOG(1) << "DEBUG: ODBC: Connected to db!" << std::endl; 
 	}
 
 	void CDatabase::Disconnect()
 	{
 		connected_ = false;
 
-		fwprintf(stderr, L"ODBC: Disconnected!\n");
+		VLOG(1) << "DEBUG: ODBC: Disconnected from db!" << std::endl;
 
-		for( auto &thisBinding : bindings_ )
+		for( auto & thisBinding : bindings_ )
 		{
 			if( thisBinding.wszBuffer )
 			{
-				fwprintf(stderr, L"ODBC: free bind!\n");
+				//VLOG(1) << "ODBC: free bind!" << std::endl;
 				free(thisBinding.wszBuffer);
 			}
 		}
@@ -139,7 +139,7 @@ namespace ODBCDatabase
 			{
 				HandleDiagnosticRecord(hStmt_, SQL_HANDLE_STMT, retCode);
 				Disconnect();
-				return;
+				fNoData = true;
 			} else if( retCode == SQL_NO_DATA_FOUND )
 			{
 				fNoData = true;
@@ -157,11 +157,15 @@ namespace ODBCDatabase
 					{
 						answer_ += wstring(L"<NULL>" + delim_);
 					}
-
-					//Ќужно придумать способ чтобы стерать бувер!!
-					
 				}
 				answer_.push_back(L'\n');
+
+				// Cleaning up wszBuffer before next Fetch
+
+				for( auto & thisBinding : bindings_ )
+				{
+					ZeroMemory(thisBinding.wszBuffer, thisBinding.cDisplaySize);
+				}
 			}
 		} while( !fNoData );
 
@@ -245,7 +249,7 @@ namespace ODBCDatabase
 
 			if( !(ThisBinding.wszBuffer) )
 			{
-				fwprintf(stderr, L"Out of memory!\n");
+				LOG(WARNING) << "Out of memory!" << std::endl;
 				Disconnect();
 				return false;
 			}
@@ -341,18 +345,18 @@ namespace ODBCDatabase
 	{
 		SQLSMALLINT iRec = 0;
 		SQLINTEGER  iError;
-		WCHAR       wszMessage[1000];
-		WCHAR       wszState[SQL_SQLSTATE_SIZE + 1];
+		SQLCHAR       wszMessage[1000];
+		SQLCHAR       wszState[SQL_SQLSTATE_SIZE + 1];
 
 		if( RetCode == SQL_INVALID_HANDLE )
 		{
-			fwprintf(stderr, L"ODBC: Invalid handle!\n");
+			LOG(WARNING) << "ODBC: Invalid handle!" << std::endl;
 			return;
 		}
 
-		bool ind = true;
+		bool noNameError = true;
 
-		while( SQLGetDiagRecW(hType,
+		while( SQLGetDiagRecA(hType,
 			  hHandle,
 			  ++iRec,
 			  wszState,
@@ -362,18 +366,18 @@ namespace ODBCDatabase
 			  (SQLSMALLINT *)NULL) == SQL_SUCCESS )
 		{
 			// Hide data truncated..
-			if( wcsncmp(wszState, L"01004", 5) )
+			if( strncmp((CHAR *)wszState, "01004", 5) )
 			{
-				fwprintf(stderr, L"[%5.5s] %s (%d)\n", wszState, wszMessage, iError);
+				LOG(WARNING) <<"ODBC: [" << wszState <<"] " << wszMessage << " (" << iError <<")" <<std::endl;
 			}
 
-			ind = false;
+			noNameError = false;
 		}
 
 
-		if( ind && RetCode == SQL_ERROR )
+		if( noNameError && RetCode == SQL_ERROR )
 		{
-			fwprintf(stderr, L"ODBC: NoName error!\n");
+			LOG(WARNING) << "ODBC: NoName error" << std::endl;
 		}
 
 	}
@@ -459,7 +463,7 @@ namespace ODBCDatabase
 				}
 
 			default:
-				fwprintf(stderr, L"ODBC: Unexpected return code %hd!\n", retCode);
+				LOG(WARNING) << "ODBC: Unexpected return code: !" <<retCode << std::endl;
 
 		}
 

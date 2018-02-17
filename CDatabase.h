@@ -1,5 +1,6 @@
 #pragma once
 #include "main.h"
+
 using std::wstring;
 
 namespace ODBCDatabase
