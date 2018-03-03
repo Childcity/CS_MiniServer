@@ -1,10 +1,4 @@
 #pragma once
-/*
-#define _WIN32_WINNT 0x0501
-
-#include <boost/bind.hpp>
-#include <boost/asio.hpp> 
-#include <boost/thread.hpp>*/
 
 #include "CClientSession.h"
 

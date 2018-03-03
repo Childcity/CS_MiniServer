@@ -22,6 +22,7 @@ void CServer::Start()
 
 void CServer::do_accept(CClientSession::ptr client, const boost::system::error_code & err)
 {
+  // if err != 0, CHECK will write to log and exit with error.
 	CHECK(!err) << "\nAccepting client faild with error: " << err << " . Closing server...";
 
 	client->start();

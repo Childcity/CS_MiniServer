@@ -1,18 +1,11 @@
 #pragma once
-//#define BOOST_ASIO_ENABLE_HANDLER_TRACKING // for asio debuging
-//#define GOOGLE_STRIP_LOG 0 // cut all glog strings from .exe
-//#include <iostream>
-//#include <string>
-//#include <locale>
-//
 #include "main.h"
-#include "GetIp.h"
+#include "CDatabase.h"
+#include "Service.h"
 #include "CServer.h"
 
-//#include "glog\logging.h"
-//#include <boost\asio.hpp> 
-
-using namespace std;
+using std::endl;
+using std::exception;
 
 void ShowUsage(const char *argv0);
 
@@ -21,19 +14,44 @@ HWND hWnd;
 
 void main(int argc, char **argv)
 {
+	//std::locale cp1251_locale("ru_RU.CP866");
+	//std::locale::global(cp1251_locale);
 	setlocale(LC_CTYPE, "");
 
 	//Init Glog
 	//fLS::FLAGS_log_dir = "logs\\";
 	google::InitGoogleLogging(argv[0]);
 
-	try
+	try 
 	{
 		boost::asio::io_context io_context ;
 
-		WCHAR Conection[] = L"Driver={SQL Server};Server=MAXWELL;Database=StopNet4; Uid=sa; Pwd=111111;";
+		//wifstream file("user.cfg");
+		//ZeroMemory(ConectionString, sizeof(ConectionString));
+		//file.getline(ConectionString, 512);
+
+		WCHAR Conection[150] = L"Driver={SQL Server};Server=MAXWELL;Database=StopNet4; Uid=sa; Pwd=111111;";
 		wmemcpy_s(ConectionString, sizeof(ConectionString), Conection, sizeof(Conection)/sizeof(WCHAR));
-		hWnd = GetDesktopWindow();
+		
+
+
+		hWnd = GetDesktopWindow(); // need for connection to ODBC driver
+
+		// try connect to db, to see if everything is ok with connection string
+		// and db is well configured
+
+		// try to connect to ODBC driver
+		auto db = new ODBCDatabase::CDatabase();
+
+		// if connected, send query to db
+		if( db->ConnectedOk() )
+		{
+			LOG(INFO) << "Connection to db was success" << endl;
+			delete db;
+		} else
+		{
+			LOG(FATAL) << "Can't connect to db. Check connection string in configuration file" << endl;
+		}
 
 		if( argc == 3 )
 			CServer Server(io_context, std::atoi(argv[1]), std::atoi(argv[2]));
@@ -42,7 +60,7 @@ void main(int argc, char **argv)
 		else
 			ShowUsage(argv[0]);
 
-	} catch(exception& e)
+	} catch(exception & e)
 	{
 		LOG(FATAL) << "Server has been crashed: " << e.what() << std::endl;
 	}
@@ -50,20 +68,31 @@ void main(int argc, char **argv)
 
 void ShowUsage( const char * argv0 )
 {
-	cout << "Usage:" << argv0 << " [ipAddress] [port] [threds_number]" << endl << endl;
+	FLAGS_alsologtostderr = true; //to make logging both on stderr and logfile 
+	LOG(INFO) << "Usage:" << argv0 << " [ipAddress] [port] [threds_number]" << endl << endl;
 	//return;
 
 	// I do not know if this is necessary, but I think that in the phase of development it will not be unnecessary
 	IpAddresses ips; // Declare structure, that consists of list of Ipv4 and Ipv6 ip addresses
+	std::list<std::wstring> posDrivers; // List of possible ODBC drivers on this machine
 	GetIpAddresses(ips); // Get list of ipv4 and ipv6 from possible interfaces
 
-	cout << "Possible ipV4 addresses on this machine:" << endl;
+	LOG(INFO) << "Possible ipV4 addresses on this machine:" << endl;
 
 	int i = 1;
-	cout << i++ << ". 127.0.0.1" << endl;
+	LOG(INFO) << i++ << ". 127.0.0.1" << endl;
 	for( auto & var : ips.mIpv4 )
-		cout << i++ << ". " << var << endl;
+		LOG(INFO) << i++ << ". " << var << endl;
+	
+	LOG(INFO) << "List of possible ODBC drivers on this machine:"  << endl;
 
-	cout << "\nPress ENTER to exit..." <<endl;
-	cin.get();
+	GetODBCDrivers(posDrivers);
+
+	i = 1;
+	for( auto & var : posDrivers )
+		LOG(INFO) << i++ << ". " << std::string(var.begin(), var.end()) <<endl;
+
+	LOG(INFO) << "Exiting...";
+	//LOG(INFO) << "\nPress ENTER to exit..." <<endl;
+	//cin.get();
 }
