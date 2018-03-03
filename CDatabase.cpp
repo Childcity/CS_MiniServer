@@ -75,6 +75,7 @@ namespace ODBCDatabase
 
 		for( auto & thisBinding : bindings_ )
 		{
+			//когда ошибка выдиления памяти под wszBuffer, прога пытается вызвать free
 			if( thisBinding.wszBuffer )
 			{
 				//VLOG(1) << "ODBC: free bind!" << std::endl;
@@ -115,7 +116,7 @@ namespace ODBCDatabase
 
 		// get the titles
 
-		result = getTitles();
+		//result = getTitles();
 		if( !result )
 		{
 			return;
@@ -191,17 +192,23 @@ namespace ODBCDatabase
 	bool CDatabase::allocateBindings(SQLSMALLINT & cCols)
 	{
 		Binding         ThisBinding;
-		SQLLEN          cchDisplay = 0, ssType;
+		SQLLEN          cchDisplay, ssType;
 		//SQLSMALLINT     cchColumnNameLength; // column name length in cheracters
 		RETCODE			retCode;
 
 		for( SQLSMALLINT iCol = 1; iCol <= cCols; iCol++ )
 		{
-		
+			cchDisplay = 0;
+
 			// Figure out the display length of the column (we will
 			// bind to char since we are only displaying data, in general
 			// you should bind to the appropriate C type if you are going
 			// to manipulate data since it is much faster...)
+			//
+			// PS: SQL_DESC_LENGTH - A numeric value that is either the maximum or actual character length of
+			// a character string or binary data type.It is the maximum character length for a
+			// fixed - length data type, or the actual character length for a variable - length
+			// data type.Its value always excludes the null - termination byte that ends the character string
 
 			retCode = SQLColAttributeW(hStmt_, iCol, SQL_DESC_DISPLAY_SIZE, NULL, 0, NULL, &cchDisplay);
 			if( retCode != SQL_SUCCESS )
@@ -233,13 +240,13 @@ namespace ODBCDatabase
 				}
 			}
 
-			ThisBinding.fChar = (ssType == SQL_CHAR ||
-								 ssType == SQL_VARCHAR ||
-								 ssType == SQL_LONGVARCHAR);
+			ThisBinding.fChar = (ssType == SQL_WCHAR ||
+								 ssType == SQL_WVARCHAR ||
+								 ssType == SQL_WLONGVARCHAR);
 
 
 			// Arbitrary limit on display size
-			if( cchDisplay > MAX_WIDTH_OF_DATA_IN_COLOMN )
+			if( cchDisplay > MAX_WIDTH_OF_DATA_IN_COLOMN || cchDisplay < 0)
 				cchDisplay = MAX_WIDTH_OF_DATA_IN_COLOMN;
 
 			// Allocate a buffer big enough to hold the text representation
@@ -292,8 +299,8 @@ namespace ODBCDatabase
 
 			ThisBinding.cDisplaySize = cchDisplay + 1;
 
-			if( ThisBinding.cDisplaySize < NULL_SIZE )
-				ThisBinding.cDisplaySize = NULL_SIZE;
+			//if( ThisBinding.cDisplaySize < NULL_SIZE )
+			//	ThisBinding.cDisplaySize = NULL_SIZE;
 
 			bindings_.push_back(ThisBinding);
 		}
@@ -430,7 +437,7 @@ namespace ODBCDatabase
 					}
 
 					if( sNumResults > 0 ){
-						//DisplayResults(hStmt_, sNumResults);
+						//get answer on query from db
 						getAnswer(sNumResults);
 					} else
 					{

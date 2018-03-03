@@ -41,13 +41,13 @@ void main(int argc, char **argv)
 		// and db is well configured
 
 		// try to connect to ODBC driver
-		ODBCDatabase::CDatabase db;
+		auto db = new ODBCDatabase::CDatabase();
 
 		// if connected, send query to db
-		if( db.ConnectedOk() )
+		if( db->ConnectedOk() )
 		{
 			LOG(INFO) << "Connection to db was success" << endl;
-			db.~CDatabase();
+			delete db;
 		} else
 		{
 			LOG(FATAL) << "Can't connect to db. Check connection string in configuration file" << endl;
@@ -60,7 +60,7 @@ void main(int argc, char **argv)
 		else
 			ShowUsage(argv[0]);
 
-	} catch(exception& e)
+	} catch(exception & e)
 	{
 		LOG(FATAL) << "Server has been crashed: " << e.what() << std::endl;
 	}

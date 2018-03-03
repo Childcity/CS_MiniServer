@@ -48,8 +48,8 @@ namespace ODBCDatabase
 		CDatabase operator=(CDatabase const&) = delete;
 
 	private:
-		
-		enum { MAX_WIDTH_OF_DATA_IN_COLOMN = 4096 }; // in characters
+		//2,147,483,647; 4,294,968,320	65536
+		enum { MAX_WIDTH_OF_DATA_IN_COLOMN = 70000/*8 * 1024 * 1000*/ }; // in characters
 		enum{ NULL_SIZE = 6 }; // size of <NULL>
 
 		std::list<Binding>  bindings_;

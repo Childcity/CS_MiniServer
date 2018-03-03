@@ -263,7 +263,7 @@ CClientSession::error_code CClientSession::do_ask_db(const string query, size_t 
 	wstring answer;
 
 	// try to connect to ODBC driver
-	ODBCDatabase::CDatabase db(L",");
+	ODBCDatabase::CDatabase db(L";,;");
 
 	// if connected, send query to db
 	if( db.ConnectedOk() )
@@ -272,11 +272,12 @@ CClientSession::error_code CClientSession::do_ask_db(const string query, size_t 
 	// get answer from db
 	db >> answer;
 
-
-	std::wcout <<answer;
-
 	// end answer with 'end symbol'
-	answer += move(wstring(L"\n"));
+	answer.at(answer.size() - 4) = '!';
+	answer.at(answer.size() - 3) = 'e';
+	answer.at(answer.size() - 2) = '\n';
+
+	//std::wcout <<answer;
 
 	{
 		boost::recursive_mutex::scoped_lock cs_;
@@ -313,7 +314,7 @@ void CClientSession::on_query(const string && msg)
 	srand((unsigned)time(NULL));// I don't know, if this func threed safe!
 	size_t queryId = rand();
 
-	string query(msg.begin() + 6, msg.end());
+	string query(msg.begin() + 6, msg.end() - 3);
 
 	CRunAsync::new_()->add(boost::bind(&CClientSession::do_ask_db, shared_from_this(), query, queryId)
 						   , boost::bind(&CClientSession::on_answer_db, shared_from_this(), queryId, _1)
@@ -351,9 +352,13 @@ size_t CClientSession::read_complete(const error_code & err, size_t bytes)
 {
 	if( err )
 		return 0;
-
-	bool found = strstr(read_buffer_, "\n") == read_buffer_ + bytes-1;
+	
+	static constexpr const char endOfMsg[] = "!e\n";
+	static constexpr const size_t sizeEndOfMsg = countof(endOfMsg) - 1;
+	//bool found = strstr(read_buffer_, "\n") == read_buffer_ + bytes-1;
 	//bool found = strstr(read_buffer_, "!e\n") == read_buffer_ + bytes - 3;
+	bool found = std::search(read_buffer_, read_buffer_ + bytes, endOfMsg, endOfMsg + sizeEndOfMsg) < read_buffer_ + bytes;
+	//bool found = std::find(read_buffer_, read_buffer_ + bytes, "!e\n") < read_buffer_ + bytes;
 	//bool found = std::find(read_buffer_, read_buffer_ + bytes, '\n') < read_buffer_ + bytes;
 
 	// we read one-by-one until we get to enter, no buffering
