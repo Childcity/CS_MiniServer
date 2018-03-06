@@ -29,14 +29,14 @@
 
 
 ::Log messages to stderr(console)	 instead of logfiles
-set GLOG_logtostderr=true
+set GLOG_logtostderr=false
 
 ::FATAL<-WARNINGS<-INFO
 ::Log message at or above this level. Default 0, that represent INFO and above
 set GLOG_minloglevel=0
 
 ::Deep log for debuging. 0=off, 1=on
-set GLOG_v=1 
+set GLOG_v=0
 
 ::Log folder. Default windows tmp directory
 set GLOG_log_dir=logs
@@ -45,8 +45,6 @@ if not exist %GLOG_log_dir% mkdir %GLOG_log_dir%
 if %errorlevel% NEQ 0 pause & exit /b 1
 
 ::Start server
-start /wait /b CS_MiniServer.exe 65042 10
-::start /wait /b CS_MiniServer.exe %~n0 65042 10
-::start /wait /b CS_MiniServer.exe 127.0.0.1 65042 10
+start /wait /b CS_MiniServer.exe
 
-exit /b %errorlevel%
+exit /b 0

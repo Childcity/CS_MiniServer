@@ -94,7 +94,7 @@ private:
 	char read_buffer_[max_msg];
 	char write_buffer_[max_msg];
 	io_context& io_context_;
-	ip::tcp::socket sock_;
+	ip::tcp::socket sock_; 
 	bool started_;
 
 	boost::posix_time::ptime last_ping_;
