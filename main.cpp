@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "main.h"
 #include "CDatabase.h"
 #include "Service.h"
@@ -43,13 +43,12 @@ void main(int argc, char **argv)
 		// try to connect to ODBC driver
 		auto db = new ODBCDatabase::CDatabase();
 
-		// if connected, send query to db
+		// if connected, ok, if not - exit with exeption
 		if( db->ConnectedOk() )
 		{
 			LOG(INFO) << "Connection to db was success" << endl;
 			delete db;
-		} else
-		{
+		} else {
 			LOG(FATAL) << "Can't connect to db. Check connection string in configuration file" << endl;
 		}
 
@@ -60,8 +59,7 @@ void main(int argc, char **argv)
 		else
 			ShowUsage(argv[0]);
 
-	} catch(exception & e)
-	{
+	} catch(exception & e) {
 		LOG(FATAL) << "Server has been crashed: " << e.what() << std::endl;
 	}
 }

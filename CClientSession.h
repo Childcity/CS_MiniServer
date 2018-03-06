@@ -1,12 +1,12 @@
-#pragma once
+﻿#pragma once
 
 #include "CDatabase.h"
 #include "main.h"
 
 using namespace boost::asio;
 using namespace boost::posix_time;
-using std::wstring;
 using std::string;
+using std::wstring;
 using std::move;
 
 void update_clients_changed();
@@ -54,7 +54,7 @@ public:
 private:
 	void on_read(const error_code & err, size_t bytes);
 
-	void on_login(const string && msg);
+	void on_login(const string & msg);
 
 	void on_ping();
 
@@ -70,17 +70,17 @@ private:
 
 		void on_get_fibo(const size_t n, error_code & err);
 
-		void on_fibo(const string && msg);
+		void on_fibo(const string & msg);
 
 	error_code do_ask_db(const string query, size_t queryId);
 
 	void on_answer_db(const size_t queryId, error_code & err);
 
-	void on_query(const string && msg);
+	void on_query(const string & msg);
 
 	void do_read();
 
-	void do_write(const string && msg);
+	void do_write(const string & msg);
 
 	size_t read_complete(const error_code & err, size_t bytes);
 
@@ -89,6 +89,8 @@ private:
 
 	mutable boost::recursive_mutex cs_;
 	enum{ max_msg = 20971520, max_timeout = 10000 };
+	static constexpr const char endOfMsg[] = "!@e";
+	static constexpr const size_t sizeEndOfMsg = countof(endOfMsg) - 1;
 	char read_buffer_[max_msg];
 	char write_buffer_[max_msg];
 	io_context& io_context_;
@@ -98,7 +100,7 @@ private:
 	boost::posix_time::ptime last_ping_;
 	deadline_timer timer_;
 
-	std::vector<std::pair<size_t,wstring>> res;
+	std::vector<std::pair<size_t,string>> res;
 	std::vector<std::pair<size_t, size_t>> fibo_res;
 	string username_;
 	bool clients_changed_;

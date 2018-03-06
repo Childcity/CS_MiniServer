@@ -75,7 +75,7 @@ namespace ODBCDatabase
 
 		for( auto & thisBinding : bindings_ )
 		{
-			//когда ошибка выдиления памяти под wszBuffer, прога пытается вызвать free
+			//????? ?????? ????????? ?????? ??? wszBuffer, ????? ???????? ??????? free
 			if( thisBinding.wszBuffer )
 			{
 				//VLOG(1) << "ODBC: free bind!" << std::endl;
@@ -389,7 +389,7 @@ namespace ODBCDatabase
 
 	}
 
-	bool CDatabase::operator<<(wstring && query)
+	bool CDatabase::operator<<(const wstring & query)
 	{	
 		RETCODE     retCode;
 		SQLSMALLINT sNumResults;

@@ -129,9 +129,9 @@ void GetODBCDrivers(std::list<std::wstring> & lst)
 		return;
 	}
 
-	while( SQL_SUCCEEDED(SQLDriversW(hEnv, direction, driver, countof(driver),
+	while( SQL_SUCCEEDED(SQLDriversW(hEnv, direction, driver, static_cast<SQLSMALLINT>(countof(attr)),
 		  &driver_ret,
-		  attr, countof(attr),
+		  attr, static_cast<SQLSMALLINT>(countof(attr)),
 		  &attr_ret)) )
 	{
 		direction = SQL_FETCH_NEXT;
