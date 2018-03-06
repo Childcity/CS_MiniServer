@@ -13,7 +13,7 @@ namespace ODBCDatabase
 
 		~CDatabase();
 
-		bool operator<<(wstring && os);
+		bool operator<<(const wstring & os);
 
 		bool ConnectedOk() const;
 		
@@ -27,7 +27,7 @@ namespace ODBCDatabase
 		/******************************************/
 
 		struct Binding{
-			SQLSMALLINT         cDisplaySize;           /* size to display  */
+			SQLLEN         cDisplaySize;           /* size to display  */
 			WCHAR               *wszBuffer;             /* display buffer   */
 			SQLLEN              indPtr;                 /* size or null     */
 			BOOL                fChar;                  /* character col?   */
