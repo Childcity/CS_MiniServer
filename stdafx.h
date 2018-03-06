@@ -1,8 +1,10 @@
 #ifndef STDAFX_
 #define STDAFX_
 
+#define _CRT_SECURE_NO_WARNINGS
 #pragma warning(push)
 #pragma warning(disable : 4005) //C4005	_WIN32_WINNT : изменение макроопределения
+#pragma warning(disable : 4996)
 
 #pragma comment(lib, "ws2_32.lib") // Winsock library file
 #pragma comment(lib, "IPHLPAPI.lib")
@@ -40,6 +42,8 @@
 #include "glog\logging.h"
 #include "CRunAsync.h"
 
+#include "INIReader.h"
+#include "INIWriter.hpp"
 
 // to define the length of array before compilation
 template <typename T, std::size_t N>

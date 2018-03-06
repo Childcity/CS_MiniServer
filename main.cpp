@@ -3,6 +3,7 @@
 #include "CDatabase.h"
 #include "Service.h"
 #include "CServer.h"
+#include "Config.h"
 
 using std::endl;
 using std::exception;
@@ -30,9 +31,12 @@ void main(int argc, char **argv)
 		//ZeroMemory(ConectionString, sizeof(ConectionString));
 		//file.getline(ConectionString, 512);
 
-		WCHAR Conection[150] = L"Driver={SQL Server};Server=MAXWELL;Database=StopNet4; Uid=sa; Pwd=111111;";
-		wmemcpy_s(ConectionString, sizeof(ConectionString), Conection, sizeof(Conection)/sizeof(WCHAR));
-		
+		Config cfg;
+
+		WCHAR *Connection = new WCHAR[150];
+		wcsncpy(Connection, wstring(cfg.keyBindings.connectionString.begin(), cfg.keyBindings.connectionString.end()).c_str(), 150);
+		wmemcpy_s(ConectionString, sizeof(ConectionString), Connection, sizeof(Connection)/sizeof(WCHAR));
+		delete[] Connection;
 
 
 		hWnd = GetDesktopWindow(); // need for connection to ODBC driver
@@ -53,12 +57,10 @@ void main(int argc, char **argv)
 			LOG(FATAL) << "Can't connect to db. Check connection string in configuration file" << endl;
 		}
 
-		if( argc == 3 )
-			CServer Server(io_context, std::atoi(argv[1]), std::atoi(argv[2]));
-		else if( argc == 4 )
-			CServer Server(io_context, argv[1], std::atoi(argv[2]), std::atoi(argv[3])); 
+		if(cfg.keyBindings.ipAdress.empty())
+			CServer Server(io_context, cfg.keyBindings.port, cfg.keyBindings.threads);
 		else
-			ShowUsage(argv[0]);
+			CServer Server(io_context, cfg.keyBindings.ipAdress, cfg.keyBindings.port, cfg.keyBindings.threads);
 
 	} catch(exception & e)
 	{
