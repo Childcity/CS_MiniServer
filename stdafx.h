@@ -43,8 +43,8 @@
 #include "glog\logging.h"
 #include "CRunAsync.h"
 
-#include "INIReader.h"
-#include "INIWriter.hpp"
+#include "INIReaderWriter\INIReader.h"
+#include "INIReaderWriter\INIWriter.hpp"
 
 // to define the length of array before compilation
 template <typename T, std::size_t N>

@@ -27,16 +27,14 @@ void main(int argc, char **argv)
 	{
 		boost::asio::io_context io_context ;
 
-		//wifstream file("user.cfg");
-		//ZeroMemory(ConectionString, sizeof(ConectionString));
-		//file.getline(ConectionString, 512);
-
 		Config cfg;
 
-		WCHAR *Connection = new WCHAR[150];
-		wcsncpy(Connection, wstring(cfg.keyBindings.connectionString.begin(), cfg.keyBindings.connectionString.end()).c_str(), 150);
-		wmemcpy_s(ConectionString, sizeof(ConectionString), Connection, sizeof(Connection)/sizeof(WCHAR));
-		delete[] Connection;
+		ZeroMemory(ConectionString, sizeof(ConectionString));
+
+		wmemcpy_s(ConectionString, 
+			sizeof(ConectionString), 
+			wstring(cfg.keyBindings.connectionString.begin(), cfg.keyBindings.connectionString.end()).c_str(), 
+			cfg.keyBindings.connectionString.size());
 
 
 		hWnd = GetDesktopWindow(); // need for connection to ODBC driver
@@ -53,6 +51,7 @@ void main(int argc, char **argv)
 			LOG(INFO) << "Connection to db was success" << endl;
 			delete db;
 		} else {
+			delete db;
 			LOG(FATAL) << "Can't connect to db. Check connection string in configuration file" << endl;
 		}
 
@@ -68,8 +67,8 @@ void main(int argc, char **argv)
 
 void ShowUsage( const char * argv0 )
 {
+	//ShowUsage(argv[0]);
 	FLAGS_alsologtostderr = true; //to make logging both on stderr and logfile 
-	LOG(INFO) << "Usage:" << argv0 << " [ipAddress] [port] [threds_number]" << endl << endl;
 	//return;
 
 	// I do not know if this is necessary, but I think that in the phase of development it will not be unnecessary

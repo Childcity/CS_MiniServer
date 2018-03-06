@@ -14,8 +14,8 @@ void Config::updateKeyBindings() {
 		saveKeyBindings();
 	}
 	else {
-		keyBindings.port = settings.GetInteger("ServerSettings", "Port", -1);
-		keyBindings.threads = settings.GetInteger("ServerSettings", "Threads", -1);
+		keyBindings.port = settings.GetInteger("ServerSettings", "Port", -1L);
+		keyBindings.threads = static_cast<short>(settings.GetInteger("ServerSettings", "Threads", -1L));
 		keyBindings.ipAdress = settings.Get("ServerSettings", "IpAdress", "0");
 		keyBindings.connectionString = settings.Get("DatabaseSettings", "ConnectionString", "a");
 
@@ -42,15 +42,15 @@ void Config::saveKeyBindings() const {
 		"; Trusted Connection\n"
 		"; Driver = { SQL Server Native Client 11.0 }; Server = myServerAddress; Database = myDataBase; Trusted_Connection = yes;\n\n"
 		"; Connecting to an SQL Server instance\n"
-		"; Driver = { SQL Server Native Client 11.0 }; Server = myServerName\theInstanceName; Database = myDataBase; Trusted_Connection = yes;\n\n"
+		"; Driver = { SQL Server Native Client 11.0 }; Server = myServerName\\theInstanceName; Database = myDataBase; Trusted_Connection = yes;\n\n"
 		"; Enable MARS\n"
 		"; Driver = { SQL Server Native Client 11.0 }; Server = myServerAddress; Database = myDataBase; Trusted_Connection = yes; MARS_Connection = yes;\n\n"
 		"; Encrypt data sent over network\n"
 		"; Driver = { SQL Server Native Client 11.0 }; Server = myServerAddress; Database = myDataBase; Trusted_Connection = yes; Encrypt = yes;\n\n"
 		"; Attach a database file on connect to a local SQL Server Express instance\n"
-		"; Driver = { SQL Server Native Client 11.0 }; Server = .\SQLExpress; AttachDbFilename = c:\asd\qwe\mydbfile.mdf; Database = dbname; Trusted_Connection = Yes;\n\n"
+		"; Driver = { SQL Server Native Client 11.0 }; Server = .\\SQLExpress; AttachDbFilename = c:\\asd\\qwe\\mydbfile.mdf; Database = dbname; Trusted_Connection = Yes;\n\n"
 		"; Attach a database file, located in the data directory, on connect to a local SQL Server Express instance\n"
-		"; Driver = { SQL Server Native Client 11.0 }; Server = .\SQLExpress; AttachDbFilename = | DataDirectory | mydbfile.mdf; Database = dbname; Trusted_Connection = Yes;\n\n"
+		"; Driver = { SQL Server Native Client 11.0 }; Server = .\\SQLExpress; AttachDbFilename = | DataDirectory | mydbfile.mdf; Database = dbname; Trusted_Connection = Yes;\n\n"
 		"; Database mirroring\n"
 		"; If you connect with ADO.NET or the SQL Native Client to a database that is being mirrored,\n"
 		"; your application can take advantage of the drivers ability to automatically redirect\n"

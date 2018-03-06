@@ -57,11 +57,11 @@ namespace ODBCDatabase
 			boost::recursive_mutex::scoped_lock lk(driverConnect);	
 			retCode = SQLDriverConnectW(hDbc_, hWnd, (SQLWCHAR *)ConectionString, SQL_NTS, NULL, 0, NULL, SQL_DRIVER_COMPLETE);
 		}
-			if( retCode != SQL_SUCCESS && retCode != SQL_SUCCESS_WITH_INFO ){
-				HandleDiagnosticRecord(hDbc_, SQL_HANDLE_DBC, retCode);
-				Disconnect();
-				return;
-			}
+		if( retCode != SQL_SUCCESS && retCode != SQL_SUCCESS_WITH_INFO ){
+			HandleDiagnosticRecord(hDbc_, SQL_HANDLE_DBC, retCode);
+			Disconnect();
+			return;
+		}
 
 		connected_ = true;
 		VLOG(1) << "DEBUG: ODBC: Connected to db!" << std::endl; 
