@@ -17,7 +17,7 @@ void CServer::Start()
 	VLOG(1) << "DEBUG: start listening" << std::endl;
 	start_listen();
 
-	threads.join_all();
+	threads.join_all(); 
 }
 
 void CServer::do_accept(CClientSession::ptr client, const boost::system::error_code & err)

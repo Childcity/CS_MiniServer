@@ -5,6 +5,7 @@
 
 using namespace boost::asio;
 using namespace boost::posix_time;
+using boost::scoped_array;
 using std::string;
 using std::wstring;
 using std::move;
@@ -23,6 +24,8 @@ private:
 		, clients_changed_(false)
 		, username_("user")
 		, io_context_(io_context)
+		, write_buffer_({ new char[max_msg] })
+		, read_buffer_({ new char[max_msg] })
 	{}
 
 public:
@@ -91,10 +94,10 @@ private:
 	enum{ max_msg = 20971520, max_timeout = 10000 };
 	static constexpr const char endOfMsg[] = "!@e";
 	static constexpr const size_t sizeEndOfMsg = countof(endOfMsg) - 1;
-	char read_buffer_[max_msg];
-	char write_buffer_[max_msg];
+	scoped_array<char> read_buffer_;
+	scoped_array<char>  write_buffer_;
 	io_context& io_context_;
-	ip::tcp::socket sock_; 
+	ip::tcp::socket sock_;
 	bool started_;
 
 	boost::posix_time::ptime last_ping_;

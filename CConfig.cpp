@@ -1,4 +1,4 @@
-#include "Config.h"
+#include "CConfig.h"
 
 using INIWriter = samilton::INIWriter;
 

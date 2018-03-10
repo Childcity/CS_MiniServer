@@ -3,7 +3,7 @@
 #include "CDatabase.h"
 #include "Service.h"
 #include "CServer.h"
-#include "Config.h"
+#include "CConfig.h"
 
 using std::endl;
 using std::exception;
@@ -51,7 +51,6 @@ void main(int argc, char **argv)
 			LOG(INFO) << "Connection to db was success" << endl;
 			delete db;
 		} else {
-			delete db;
 			LOG(FATAL) << "Can't connect to db. Check connection string in configuration file" << endl;
 		}
 
@@ -60,12 +59,12 @@ void main(int argc, char **argv)
 		else
 			CServer Server(io_context, cfg.keyBindings.ipAdress, cfg.keyBindings.port, cfg.keyBindings.threads);
 
-	} catch(exception & e) {
+	} catch(exception& e) {
 		LOG(FATAL) << "Server has been crashed: " << e.what() << std::endl;
 	}
 }
 
-void ShowUsage( const char * argv0 )
+void ShowUsage( const char* argv0 )
 {
 	//ShowUsage(argv[0]);
 	FLAGS_alsologtostderr = true; //to make logging both on stderr and logfile 

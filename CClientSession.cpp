@@ -83,11 +83,14 @@ void CClientSession::on_read(const error_code & err, size_t bytes)
 	if( !started() )
 		return;
 
+	// cut size of end of msg
+	bytes -= sizeEndOfMsg;
+
 	// the static variable and them size will be one for ALL INSTANCES OF THE CLASS that are created
 	static constexpr const char login[] = "login ";
 	static constexpr const char fibo[] = "fibo ";
 	static constexpr const char query[] = "query ";
-	static constexpr const char ping[] = "ping!@e";
+	static constexpr const char ping[] = "ping";
 	static constexpr const char who[] = "who";
 	static constexpr const size_t login_size = countof(login);
 	static constexpr const size_t fibo_size = countof(fibo);
@@ -101,7 +104,7 @@ void CClientSession::on_read(const error_code & err, size_t bytes)
 	boost::scoped_array<char> tmp_read_buffer_{ new char[bytes + sizeof(char)] }; //+ sizeof(char) for '\0'
 	{
 		boost::recursive_mutex::scoped_lock lk(cs_);
-		memcpy_s(tmp_read_buffer_.get(), bytes + sizeof(char), read_buffer_, bytes / sizeof(char));
+		memcpy_s(tmp_read_buffer_.get(), bytes + sizeof(char), read_buffer_.get(), bytes / sizeof(char));
 		tmp_read_buffer_[bytes] = 0;
 	}
 
@@ -116,7 +119,7 @@ void CClientSession::on_read(const error_code & err, size_t bytes)
 	} else if( bytes == ping_size - 1/*+1*/ && memcmp(tmp_read_buffer_.get(), ping, ping_size - 1) == 0 )
 	{
 		on_ping();
-	} else if( bytes == who_size/*+1*/ && memcmp(tmp_read_buffer_.get(), who, who_size - 1) == 0 )
+	} else if( bytes == who_size - 1/*+1*/ && memcmp(tmp_read_buffer_.get(), who, who_size - 1) == 0 )
 	{
 		on_clients();
 	} else if( bytes > fibo_size && memcmp(tmp_read_buffer_.get(), fibo, fibo_size - 1) == 0 )
@@ -148,7 +151,7 @@ void CClientSession::on_login(const string & msg)
 void CClientSession::on_ping()
 {
 	boost::recursive_mutex::scoped_lock lk(cs_);
-	do_write(clients_changed_ ? string("ping client_list_changed\n") : string("ping OK\n"));
+	do_write(clients_changed_ ? string("ping client_list_changed\n") : string(u8"ping OK\n"));
 
 	// we have notified client, that clients list was changed yet,
 	// so clients_changed_ should be false 
@@ -212,7 +215,7 @@ CClientSession::error_code CClientSession::do_get_fibo(size_t n)
 {
 	//return n<=2 ? n: get_fibo(n-1) + get_fibo(n-2);
 	size_t a = 1, b = 1;
-	for( int i = 3; i <= n; i++ )
+	for( size_t i = 3; i <= n; i++ )
 	{
 		size_t c = a + b;
 		a = b; b = c;
@@ -319,7 +322,7 @@ void CClientSession::on_query(const string & msg)
 	srand((unsigned)time(NULL));// I don't know, if this func threed safe!
 	size_t queryId = rand();
 
-	string query(msg.begin() + 6, msg.end() - sizeEndOfMsg);
+	string query(msg.begin() + 6, msg.end());
 
 	CRunAsync::new_()->add(boost::bind(&CClientSession::do_ask_db, shared_from_this(), query, queryId)
 						   , boost::bind(&CClientSession::on_answer_db, shared_from_this(), queryId, _1)
@@ -334,9 +337,9 @@ void CClientSession::do_read()
 {
 	VLOG(1) << "DEBUG: do read" << std::endl;
 
-	ZeroMemory(read_buffer_, max_msg);
+	ZeroMemory(read_buffer_.get(), max_msg);
 
-	async_read(sock_, buffer(read_buffer_),
+	async_read(sock_, buffer(read_buffer_.get(), max_msg),
 			   boost::bind(&CClientSession::read_complete, shared_from_this(), _1, _2),
 			   boost::bind(&CClientSession::on_read, shared_from_this(), _1, _2)
 	);
@@ -350,8 +353,8 @@ void CClientSession::do_write(const string & msg)
 		return;
 
 	boost::recursive_mutex::scoped_lock lk(cs_);
-	std::copy(msg.begin(), msg.end(), write_buffer_);
-	sock_.async_write_some(buffer(write_buffer_, msg.size()),
+	std::copy(msg.begin(), msg.end(), write_buffer_.get());
+	sock_.async_write_some(buffer(write_buffer_.get(), msg.size()),
 						   boost::bind(&CClientSession::on_write, shared_from_this(), _1, _2));
 }
 
@@ -365,7 +368,7 @@ size_t CClientSession::read_complete(const error_code & err, size_t bytes)
 	//	std::cout << read_buffer_ << std::endl, count = 0;
 	//bool found = strstr(read_buffer_, "\n") == read_buffer_ + bytes-1;
 	//bool found = strstr(read_buffer_, "!e\n") == read_buffer_ + bytes - 3;
-	bool found = std::search(read_buffer_, read_buffer_ + bytes, endOfMsg, endOfMsg + sizeEndOfMsg) < read_buffer_ + bytes;
+	bool found = std::search(read_buffer_.get(), read_buffer_.get() + bytes, endOfMsg, endOfMsg + sizeEndOfMsg) < read_buffer_.get() + bytes;
 	//bool found = std::find(read_buffer_, read_buffer_ + bytes, "!e\n") < read_buffer_ + bytes;
 	//bool found = std::find(read_buffer_, read_buffer_ + bytes, '\n') < read_buffer_ + bytes;
 
