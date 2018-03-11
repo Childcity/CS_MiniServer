@@ -2,6 +2,7 @@
 #define STDAFX_
 
 #define _CRT_SECURE_NO_WARNINGS
+#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 #pragma warning(push)
 #pragma warning(disable : 4005) //C4005	_WIN32_WINNT : изменение макроопределения
 #pragma warning(disable : 4996)
