@@ -19,6 +19,8 @@ void main(int argc, char **argv)
 	//std::locale::global(cp1251_locale);
 	setlocale(LC_CTYPE, "");
 
+	Config::initBatFile();
+
 	//Init Glog
 	//fLS::FLAGS_log_dir = "logs\\";
 	google::InitGoogleLogging(argv[0]);

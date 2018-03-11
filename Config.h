@@ -18,5 +18,7 @@ public:
 	void updateKeyBindings();
 
 	void saveKeyBindings() const;
+
+	static void initBatFile();
 };
 #endif
