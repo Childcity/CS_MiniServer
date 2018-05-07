@@ -1,3 +1,5 @@
+#ifndef _CSERVER_
+#define _CSERVER_
 #pragma once
 
 #include "CClientSession.h"
@@ -34,4 +36,4 @@ private:
 	boost::thread_group threads;
 	short thread_num_;
 };
-
+#endif

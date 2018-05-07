@@ -1,3 +1,5 @@
+#ifndef _CDATABASE_
+#define _CDATABASE_
 #pragma once
 #include "main.h"
 
@@ -69,4 +71,4 @@ namespace ODBCDatabase
 	};
 
 }
-
+#endif

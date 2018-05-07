@@ -32,10 +32,10 @@ void CClientSession::stop()
 	{
 		boost::recursive_mutex::scoped_lock lk(cs_);
 
-		VLOG(1) << "DEBUG: stop client: " << username() << std::endl;
-
 		if( !started_ )
 			return;
+
+		VLOG(1) << "DEBUG: stop client: " << username() << std::endl;
 
 		started_ = false;
 		sock_.close();
@@ -109,8 +109,7 @@ void CClientSession::on_read(const error_code & err, size_t bytes)
 	}
 
 	VLOG(1) << "DEBUG: received msg: '" << tmp_read_buffer_.get() << '\''
-		<< " DEBUG: received bytes: " << bytes << ' ' << memcmp(tmp_read_buffer_.get(), who, who_size - 1)
-		<< std::endl;
+		<< " DEBUG: received bytes: " << bytes << ' ' << memcmp(tmp_read_buffer_.get(), who, who_size - 1);
 
 
 	if( bytes > login_size && memcmp(tmp_read_buffer_.get(), login, login_size - 1) == 0 )
@@ -131,7 +130,7 @@ void CClientSession::on_read(const error_code & err, size_t bytes)
 	} else
 	{
 		do_write(string("command undefined\n"));
-		LOG(WARNING) << "Invalid msg from client " << username() << ": '" << tmp_read_buffer_.get() << '\'' << std::endl;
+		LOG(WARNING) << "Invalid msg from client " << username() << ": '" << tmp_read_buffer_.get() << '\'';
 	}
 }
 
@@ -264,38 +263,34 @@ void CClientSession::on_fibo(const string & msg)
 
 CClientSession::error_code CClientSession::do_ask_db(const string query, size_t queryId)
 {
-	wstring answer;
-	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converterUTF8_UTF16;
+	wstring answer = L"";
 
 	// try to connect to ODBC driver
 	ODBCDatabase::CDatabase db(L";,;");
 
 	// if connected, send query to db
 	if( db.ConnectedOk() )
-		db << converterUTF8_UTF16.from_bytes(query);
+	{
+		db << ConverterUTF8_UTF16<string, wstring>(query);
 
-//string narrow = converter.to_bytes(wide_utf16_source_string);
-//wstring wide = converter.from_bytes(narrow_utf8_source_string);
-	// get answer from db
-	db >> answer;
+		// get answer from db
+		db >> answer;
+	}
 
 	// end answer with 'end symbol'
 	answer += L"!@e\n";
-	/*answer.at(answer.size() - 4) = '!';
-	answer.at(answer.size() - 3) = 'e';
-	answer.at(answer.size() - 2) = '\n';*/
 
 	//std::wcout <<answer;
 
 	{
 		boost::recursive_mutex::scoped_lock cs_;
-		res.push_back(std::make_pair(queryId, converterUTF8_UTF16.to_bytes(answer)));
+		res.push_back(std::make_pair(queryId, ConverterUTF8_UTF16<wstring, string>(answer)));
 	}
 
 	return boost::system::error_code(0, boost::system::generic_category());
 }
 
-void CClientSession::on_answer_db(const size_t queryId, error_code & err)
+void CClientSession::on_answer_db(const size_t queryId, error_code& err)
 {
 	if( err )
 		return;
@@ -308,7 +303,7 @@ void CClientSession::on_answer_db(const size_t queryId, error_code & err)
 		for( auto & it : res )
 			if( it.first == queryId )
 			{
-				//HERE WE SHOULD zip msg (it.second)
+				//HERE WE SHOULD hide msg from hackers (it.second)
 				do_write(it.second);
 				//VLOG(1) << "DEBUG: answer for: " << queryId << " = " << it.second << std::endl;
 				break;
@@ -316,7 +311,7 @@ void CClientSession::on_answer_db(const size_t queryId, error_code & err)
 	}
 }
 
-void CClientSession::on_query(const string & msg)
+void CClientSession::on_query(const string& msg)
 {
 	// we must generate for each query Id to distinguish different query
 	srand((unsigned)time(NULL));// I don't know, if this func threed safe!
@@ -347,25 +342,26 @@ void CClientSession::do_read()
 	//post_check_ping();
 }
 
-void CClientSession::do_write(const string & msg)
+void CClientSession::do_write(const string& msg)
 {
 	if( !started() )
 		return;
 
 	boost::recursive_mutex::scoped_lock lk(cs_);
 	std::copy(msg.begin(), msg.end(), write_buffer_.get());
+
 	sock_.async_write_some(buffer(write_buffer_.get(), msg.size()),
 						   boost::bind(&CClientSession::on_write, shared_from_this(), _1, _2));
 }
 
-size_t CClientSession::read_complete(const error_code & err, size_t bytes)
+size_t CClientSession::read_complete(const error_code& err, size_t bytes)
 {
 	if( err )
 		return 0;
 
 	//static short count = 0;
 	//if( count++>1000 )
-	//	std::cout << read_buffer_ << std::endl, count = 0;
+	//	std::cout << read_buffer_.get() << std::endl, count = 0;
 	//bool found = strstr(read_buffer_, "\n") == read_buffer_ + bytes-1;
 	//bool found = strstr(read_buffer_, "!e\n") == read_buffer_ + bytes - 3;
 	bool found = std::search(read_buffer_.get(), read_buffer_.get() + bytes, endOfMsg, endOfMsg + sizeEndOfMsg) < read_buffer_.get() + bytes;

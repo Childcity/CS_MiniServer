@@ -10,15 +10,8 @@ namespace ODBCDatabase
 	CDatabase::CDatabase(const wstring delim)
 	{
 		connected_ = false;
-
-		if( !delim.empty() )
-		{
-			delim_ = delim;
-		} else
-		{
-			delim_ = L",";
-		}
-
+		delim_ = delim;
+		answer_ = L"";
 		RETCODE retCode;
 		hEnv_ = NULL;
 		hDbc_ = NULL;
@@ -55,7 +48,7 @@ namespace ODBCDatabase
 		
 		{
 			boost::recursive_mutex::scoped_lock lk(driverConnect);	
-			retCode = SQLDriverConnectW(hDbc_, hWnd, (SQLWCHAR *)ConectionString, SQL_NTS, NULL, 0, NULL, SQL_DRIVER_COMPLETE);
+			retCode = SQLDriverConnectW(hDbc_, hWnd, (SQLWCHAR *)ConectionString, SQL_NTS, NULL, 0, NULL, SQL_DRIVER_NOPROMPT);
 		}
 		if( retCode != SQL_SUCCESS && retCode != SQL_SUCCESS_WITH_INFO ){
 			HandleDiagnosticRecord(hDbc_, SQL_HANDLE_DBC, retCode);
@@ -77,12 +70,15 @@ namespace ODBCDatabase
 			for( auto & thisBinding : bindings_ )
 			{
 				//????? ?????? ????????? ?????? ??? wszBuffer, ????? ???????? ??????? free
-				if( thisBinding.wszBuffer )
+				if( thisBinding.wszBuffer != NULL )
 				{
 					//VLOG(1) << "ODBC: free bind!" << std::endl;
 					free(thisBinding.wszBuffer);
+					thisBinding.wszBuffer = NULL;
 				}
 			}
+
+			bindings_.clear();
 
 		}catch(exception& e)
 		{ 
@@ -90,24 +86,24 @@ namespace ODBCDatabase
 		}
 		
 
-		if( hStmt_ )
+		if( hStmt_ != NULL )
 		{
 			SQLFreeHandle(SQL_HANDLE_STMT, hStmt_);
 		}
 
-		if( hDbc_ )
+		if( hDbc_ != NULL )
 		{
 			SQLDisconnect(hDbc_);
 			SQLFreeHandle(SQL_HANDLE_DBC, hDbc_);
 		}
 
-		if( hEnv_ )
+		if( hEnv_ != NULL )
 		{
 			SQLFreeHandle(SQL_HANDLE_ENV, hEnv_);
 		}
 	}
 
-	void CDatabase::getAnswer(SQLSMALLINT & cCols)
+	void CDatabase::getAnswer(SQLSMALLINT& cCols)
 	{
 		try{
 			RETCODE	retCode = SQL_SUCCESS;
@@ -124,11 +120,11 @@ namespace ODBCDatabase
 
 			// get the titles
 
-			//result = getTitles();
+			/*result = getTitles();
 			if( !result )
 			{
 				return;
-			}
+			}*/
 
 			// Fetch and display the data
 
@@ -174,7 +170,7 @@ namespace ODBCDatabase
 				}
 			} while( !fNoData );
 
-			for( auto & thisBinding : bindings_ )
+			/*for( auto & thisBinding : bindings_ )
 			{
 				if( thisBinding.wszBuffer )
 				{
@@ -182,7 +178,7 @@ namespace ODBCDatabase
 				}
 			}
 
-			bindings_.clear();
+			bindings_.clear();*/
 
 		} catch( exception& e )
 		{
@@ -378,14 +374,14 @@ namespace ODBCDatabase
 
 	void CDatabase::HandleDiagnosticRecord(SQLHANDLE hHandle, SQLSMALLINT hType, RETCODE RetCode)
 	{
-		SQLSMALLINT iRec = 0;
-		SQLINTEGER  iError;
+		SQLSMALLINT	  iRec = 0;
+		SQLINTEGER    iError;
 		SQLCHAR       wszMessage[1000];
 		SQLCHAR       wszState[SQL_SQLSTATE_SIZE + 1];
 
 		if( RetCode == SQL_INVALID_HANDLE )
 		{
-			LOG(WARNING) << "ODBC: Invalid handle!";
+			LOG(WARNING) << "ODBC: Invalid handle with type identifier: '" <<hType <<"' !";
 			return;
 		}
 

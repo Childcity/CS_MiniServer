@@ -1,4 +1,6 @@
-﻿#pragma once
+﻿#ifndef _CCLIENTSESSION_
+#define _CCLIENTSESSION_
+#pragma once
 
 #include "CDatabase.h"
 #include "main.h"
@@ -17,7 +19,7 @@ class CClientSession : public boost::enable_shared_from_this<CClientSession>
 private:
 	typedef boost::system::error_code error_code;
 
-	CClientSession(io_context & io_context)
+	CClientSession(io_context& io_context)
 		: sock_(io_context)
 		, started_(false)
 		, timer_(io_context)
@@ -45,7 +47,7 @@ public:
 	bool started() const;
 
 	// return link to socket of current client
-	ip::tcp::socket & sock();
+	ip::tcp::socket& sock();
 
 	// get user name
 	string username() const;
@@ -55,9 +57,9 @@ public:
 	void set_clients_changed();
 
 private:
-	void on_read(const error_code & err, size_t bytes);
+	void on_read(const error_code& err, size_t bytes);
 
-	void on_login(const string & msg);
+	void on_login(const string& msg);
 
 	void on_ping();
 
@@ -67,25 +69,25 @@ private:
 
 	void post_check_ping();
 
-	void on_write(const error_code & err, size_t bytes);
+	void on_write(const error_code& err, size_t bytes);
 
 		error_code do_get_fibo(size_t n) ;
 
-		void on_get_fibo(const size_t n, error_code & err);
+		void on_get_fibo(const size_t n, error_code& err);
 
-		void on_fibo(const string & msg);
+		void on_fibo(const string& msg);
 
 	error_code do_ask_db(const string query, size_t queryId);
 
-	void on_answer_db(const size_t queryId, error_code & err);
+	void on_answer_db(const size_t queryId, error_code& err);
 
-	void on_query(const string & msg);
+	void on_query(const string& msg);
 
 	void do_read();
 
-	void do_write(const string & msg);
+	void do_write(const string& msg);
 
-	size_t read_complete(const error_code & err, size_t bytes);
+	size_t read_complete(const error_code& err, size_t bytes);
 
 
 private:
@@ -108,3 +110,4 @@ private:
 	string username_;
 	bool clients_changed_;
 };
+#endif
