@@ -29,14 +29,14 @@
 
 
 ::Log messages to stderr(console)	 instead of logfiles
-set GLOG_logtostderr=false
+set GLOG_logtostderr=true
 
 ::FATAL<-WARNINGS<-INFO
 ::Log message at or above this level. Default 0, that represent INFO and above
 set GLOG_minloglevel=0
 
 ::Deep log for debuging. 0=off, 1=on
-set GLOG_v=0
+set GLOG_v=1 
 
 ::Log folder. Default windows tmp directory
 set GLOG_log_dir=logs

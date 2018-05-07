@@ -1,9 +1,6 @@
-#pragma once
-
-struct IpAddresses{
-	std::list<std::string> mIpv4, mIpv6;
-};
-
-void GetIpAddresses(IpAddresses & ipAddrs);
-
-void GetODBCDrivers(std::list<std::wstring> & lst);
+#ifndef _SERVICE_
+#define _SERVICE_
+int service_register(const LPWSTR serviceName_);
+void service_main();
+void service_controlhandler(DWORD request);
+#endif

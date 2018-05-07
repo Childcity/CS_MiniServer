@@ -1,3 +1,5 @@
+#ifndef _CRUNASYNC_
+#define _CRUNASYNC_
 #pragma once
 //#define _WIN32_WINNT 0x0501
 //#include <boost/thread.hpp>
@@ -54,3 +56,4 @@ private:
 	bool started_;
 	ptr self_;
 };
+#endif

@@ -1,3 +1,5 @@
+#ifndef _CDATABASE_
+#define _CDATABASE_
 #pragma once
 #include "main.h"
 
@@ -5,6 +7,7 @@ using std::wstring;
 
 namespace ODBCDatabase
 {
+	using std::exception;
 
 	class CDatabase{
 	public:
@@ -49,7 +52,8 @@ namespace ODBCDatabase
 
 	private:
 		//2,147,483,647; 4,294,968,320	65536
-		enum { MAX_WIDTH_OF_DATA_IN_COLOMN = 70000/*8 * 1024 * 1000*/ }; // in characters
+		//1MB = 1024 * 1024 Bytes
+		enum { MAX_WIDTH_OF_DATA_IN_COLOMN = 8 * 1024 * 1024 }; // in characters
 		enum{ NULL_SIZE = 6 }; // size of <NULL>
 
 		std::list<Binding>  bindings_;
@@ -67,4 +71,4 @@ namespace ODBCDatabase
 	};
 
 }
-
+#endif

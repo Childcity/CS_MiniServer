@@ -300,5 +300,4 @@ __pycache__/
 
 glog-0.3.5/
 [Ll]ogs/
-TestWithMSDB/
-CS_MiniServer.ini
+[Tt]ests*/
