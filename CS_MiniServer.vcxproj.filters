@@ -10,6 +10,12 @@
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="Utils.cpp" />
     <ClCompile Include="CConfig.cpp" />
+    <ClCompile Include="include\INIReaderWriter\ini.c">
+      <Filter>INIReader</Filter>
+    </ClCompile>
+    <ClCompile Include="include\INIReaderWriter\cpp\INIReader.cpp">
+      <Filter>INIReader</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CClientSession.h" />
@@ -21,5 +27,16 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Utils.h" />
     <ClInclude Include="CConfig.h" />
+    <ClInclude Include="include\INIReaderWriter\ini.h">
+      <Filter>INIReader</Filter>
+    </ClInclude>
+    <ClInclude Include="include\INIReaderWriter\cpp\INIReader.h">
+      <Filter>INIReader</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="INIReader">
+      <UniqueIdentifier>{8eff8ff0-5b2f-4216-a045-f57586337ff3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

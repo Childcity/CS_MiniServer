@@ -1,6 +1,7 @@
 #ifndef STDAFX_
 #define STDAFX_
-
+//lib\\libglog_x64_release.lib;lib\\INIReader_x64_Release.lib;
+//lib\\INIReader_x64_Debug.lib;lib\\libglog_x64_debug.lib;
 #define _CRT_SECURE_NO_WARNINGS
 #define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 #pragma warning(push)
@@ -44,7 +45,7 @@
 #include "glog\logging.h"
 #include "CRunAsync.h"
 
-#include "INIReaderWriter\INIReader.h"
+#include "INIReaderWriter\cpp\INIReader.h"
 #include "INIReaderWriter\INIWriter.hpp"
 
 #define QUICKLOG(str) std::ofstream log("D:\\log.log", std::ios::ate);log << (str) << std::endl;log.close();
@@ -56,6 +57,10 @@ constexpr std::size_t countof(T const (&)[N]) noexcept
 {
 	return N;
 }
+
+//template <typename T, size_t N>
+//char(&ArraySizeHelper(T(&array)[N]))[N];
+//#define arraysize(array) (sizeof(ArraySizeHelper(array)))
 
 template<class A, class B>
 static B ConverterUTF8_UTF16(A str1)
