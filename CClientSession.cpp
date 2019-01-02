@@ -201,7 +201,7 @@ void CClientSession::on_check_ping()
 void CClientSession::post_check_ping()
 {
 	boost::recursive_mutex::scoped_lock lk(cs_);
-	timer_.expires_from_now(boost::posix_time::millisec(max_timeout));
+	timer_.expires_from_now(boost::posix_time::millisec((long)max_timeout));
 	timer_.async_wait(boost::bind(&CClientSession::on_check_ping, shared_from_this()));
 }
 
